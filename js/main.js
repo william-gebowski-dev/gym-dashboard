@@ -9,12 +9,34 @@
  * 3. Se file:// → dropzone
  * 4. fetch + populate App → rerender
  * 5. Listener 'gym:rangechange' para re-render ao trocar range
+ * 6. Init tabs + summary + timestamps
  */
 window.Main = (function () {
   const { App, parseRangeFromURL } = window.State;
   const { loadAndAggregate } = window.Data;
   const { renderHero, rerender } = window.Render;
   const { showFileDropZone } = window.Drop;
+  const { summaryCard } = window.UI;
+
+  function updateTimestamps(sessions) {
+    App.loadedAt = new Date();
+    const updatedEl = document.getElementById('updatedAt');
+    if (updatedEl) {
+      updatedEl.textContent = App.loadedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+    const lastSession = sessions.at(-1);
+    const lastEl = document.getElementById('lastWorkout');
+    if (lastEl && lastSession) {
+      lastEl.textContent = `${window.I18N.t('header.lastWorkout')}: ${lastSession.date.toLocaleDateString('pt-BR')}`;
+    }
+  }
+
+  function renderSummary(sessions) {
+    const slot = document.getElementById('summarySlot');
+    if (!slot) return;
+    const text = window.Summary.render(sessions, App.range);
+    slot.replaceChildren(summaryCard(text));
+  }
 
   async function main() {
     App.range = parseRangeFromURL();
@@ -30,18 +52,28 @@ window.Main = (function () {
       App.sessions = sessions;
       App.rawSessions = raw;
       App.sourceSig = sig;
+      updateTimestamps(sessions);
+      renderSummary(sessions);
       rerender();
+      window.Tabs.init();
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
       const { kpiCard } = window.UI;
-      document.getElementById('kpis').replaceChildren(
-        kpiCard('!', 'Erro ao carregar. Rode via servidor (python -m http.server).'),
-      );
+      const kpis = document.getElementById('kpis');
+      if (kpis) {
+        kpis.replaceChildren(
+          kpiCard('!', window.I18N.t('error.load')),
+        );
+      }
       showFileDropZone();
     }
   }
 
-  window.addEventListener('gym:rangechange', () => rerender());
+  window.addEventListener('gym:rangechange', () => {
+    rerender();
+    renderSummary(App.sessions);
+    updateTimestamps(App.sessions);
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', main);
