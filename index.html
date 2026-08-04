@@ -11,9 +11,16 @@
       img-src 'self' https://d3r2akiggou3b8.cloudfront.net data:;
       connect-src 'self';">
   <title>Evolução — Gym Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Inline only the legacy V1 fallback (table-on-mobile) until full V2 audit. */
+    @media (max-width: 720px) {
+      .sessions-cards { display: none; }
+    }
+  </style>
 </head>
 <body>
   <a class="skip-link" href="#main">Pular para o conteúdo</a>
