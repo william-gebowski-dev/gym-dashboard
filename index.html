@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard Academia</title>
+  <title>Evolução — Gym Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -18,9 +18,9 @@
       --radius: 22px;
       --ease: 0.18s ease;
     }
-    
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    
+
     body {
       background: var(--bg);
       color: var(--text);
@@ -28,76 +28,126 @@
       line-height: 1.6;
       min-height: 100vh;
     }
-    
+
     .wrap {
       max-width: 1440px;
       margin: 0 auto;
       padding: 28px 24px;
     }
-    
-    /* Hero */
+
+    /* Hero compacto */
     .hero {
       background: linear-gradient(135deg, var(--card), #16213e);
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: calc(var(--radius) + 8px);
-      padding: 40px;
-      margin-bottom: 32px;
+      padding: 24px 32px;
+      margin-bottom: 24px;
     }
-    
-    .eyebrow {
-      color: var(--accent-2);
+    .hero-top {
+      display: flex; justify-content: space-between; align-items: baseline;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 12px;
+    }
+    .hero-top h1 {
+      font-size: clamp(1.5rem, 2.5vw, 2.25rem);
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      font-size: 0.78rem;
-      margin-bottom: 8px;
+      letter-spacing: -0.04em;
+      margin: 0;
     }
-    
-    h1 {
-      font-size: clamp(2rem, 4vw, 4.25rem);
-      font-weight: 700;
-      letter-spacing: -0.05em;
-      margin-bottom: 12px;
-    }
-    
-    .subtitle {
+    .hero-meta {
       color: var(--muted);
-      font-size: 1.05rem;
-      max-width: 760px;
+      font-size: 0.85rem;
     }
-    
+    .hero-meta .dot { margin: 0 6px; }
+    .hero-period {
+      display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .range-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+    .range-picker button {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .range-picker button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .summary-slot { margin-top: 14px; }
+    .summary-card {
+      background: rgba(233,69,96,0.08);
+      border-left: 3px solid var(--accent);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    /* Tabs */
+    .tabs-nav {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+    .tabs-nav button {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 12px 20px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-family: inherit;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tabs-nav button.active {
+      color: var(--text);
+      border-bottom-color: var(--accent);
+    }
+
     /* KPIs */
     .kpis {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 16px;
-      margin-bottom: 32px;
+      margin-bottom: 24px;
     }
-    
     .kpi {
       background: rgba(15,15,15,0.35);
       border: 1px solid rgba(255,255,255,0.09);
       border-radius: var(--radius);
-      padding: 24px;
+      padding: 20px 22px;
       transition: all var(--ease);
     }
-    
     .kpi:hover {
       border-color: rgba(255,255,255,0.16);
       transform: translateY(-2px);
     }
-    
     .kpi .value {
-      font-size: 2rem;
+      font-size: 1.9rem;
       font-weight: 700;
       letter-spacing: -0.04em;
     }
-    
     .kpi .label {
       color: var(--muted);
-      font-size: 0.86rem;
+      font-size: 0.85rem;
+      margin-top: 4px;
     }
-    
+    .kpi .delta {
+      font-size: 0.75rem;
+      margin-top: 6px;
+      color: var(--muted);
+    }
+    .kpi .delta.up { color: var(--ok); }
+    .kpi .delta.down { color: var(--warn); }
+    .kpi .delta.flat { color: var(--muted); }
+
     /* Charts */
     .chart-box {
       background: rgba(15,15,15,0.35);
@@ -106,94 +156,64 @@
       padding: 24px;
       margin-bottom: 24px;
     }
-    
     .chart-box h2 {
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       margin-bottom: 16px;
     }
-    
     canvas {
       width: 100% !important;
       height: auto !important;
     }
-    
+    .chart-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .chart-row .chart-box { margin-bottom: 0; }
+    @media (max-width: 900px) {
+      .chart-row { grid-template-columns: 1fr; }
+    }
+
     /* Tables */
     table {
       width: 100%;
       border-collapse: collapse;
     }
-    
     th, td {
-      padding: 12px 16px;
       text-align: left;
-      border-bottom: 1px solid rgba(255,255,255,0.09);
+      padding: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
     }
-    
     th {
       color: var(--muted);
-      font-size: 0.86rem;
+      font-size: 0.8rem;
       font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
-    
-    tr:hover {
-      background: rgba(255,255,255,0.03);
-    }
-    
-    /* Buttons */
-    button {
-      background: linear-gradient(135deg, var(--accent), #b8324b);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      padding: 12px 24px;
-      font-weight: 600;
+    tbody tr {
       cursor: pointer;
-      transition: all var(--ease);
+      transition: background var(--ease);
     }
-    
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(233,69,96,0.3);
-    }
-    
-    button.secondary {
-      background: #111827;
-    }
-    
-    /* Mobile */
-    @media (max-width: 768px) {
-      .wrap { padding: 16px; }
-      .hero { padding: 24px; }
-      h1 { font-size: 1.8rem; }
-      .kpis { grid-template-columns: 1fr 1fr; }
-    }
-    
-    /* Animations */
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .fade-in {
-      animation: fadeIn 0.6s ease forwards;
-    }
+    tbody tr:hover { background: rgba(255,255,255,0.03); }
 
-    /* Heatmap mensal (U2) */
+    /* Heatmap */
     .heatmap {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 16px;
-      padding: 12px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 360px;
+      overflow-y: auto;
     }
     .heat-month {
       display: flex;
-      flex-direction: column;
-      gap: 4px;
+      align-items: center;
+      gap: 12px;
     }
     .heat-month-label {
-      font-size: 0.75em;
+      font-size: 0.75rem;
       color: var(--muted);
-      margin-bottom: 2px;
+      min-width: 56px;
     }
     .heat-grid {
       display: grid;
@@ -210,9 +230,7 @@
     .heat-cell[data-level="2"] { background: rgba(233,69,96,0.5); }
     .heat-cell[data-level="3"] { background: rgba(233,69,96,0.75); }
     .heat-cell[data-level="4"] { background: var(--accent); }
-    .heat-cell[data-level]:not([data-level="0"]) {
-      cursor: help;
-    }
+    .heat-cell[data-level]:not([data-level="0"]) { cursor: help; }
     .heatmap-legend {
       display: flex;
       align-items: center;
@@ -230,11 +248,26 @@
       aspect-ratio: auto;
     }
 
-    /* PR grid com sparkline (U4) */
+    /* PR grid */
     .pr-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 12px;
+    }
+    .pr-group-heading {
+      grid-column: 1 / -1;
+      font-size: 0.9rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 16px 0 8px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .pr-group-heading:first-child {
+      border-top: none;
+      margin-top: 0;
+      padding-top: 0;
     }
     .pr-card {
       background: rgba(255,255,255,0.03);
@@ -272,102 +305,170 @@
       position: absolute;
       top: 8px;
       right: 8px;
-      font-size: 0.65em;
-      padding: 2px 6px;
+      font-size: 0.62em;
+      padding: 3px 8px;
       border-radius: 8px;
-      font-weight: 600;
+      font-weight: 700;
+      letter-spacing: 0.05em;
     }
     .pr-badge.new { background: var(--ok); color: #000; }
-    .pr-badge.stale { background: var(--warn); color: #000; }
+    .pr-badge.evolving { background: var(--accent-2); color: #000; }
+    .pr-badge.stagnant { background: var(--warn); color: #000; }
 
-    /* Streak card (F3) */
-    #streakCards .kpi .value { font-size: 2em; }
+    /* Modal */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .modal-content {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 32px;
+      max-width: 600px;
+      width: 100%;
+      position: relative;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .modal-close {
+      position: absolute; top: 12px; right: 16px;
+      background: transparent; border: none;
+      color: var(--text); font-size: 1.6rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .modal-date { color: var(--muted); margin: 8px 0 16px; }
+    .modal-stats { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
+    .modal-hint { color: var(--muted); font-size: 0.85rem; }
+
+    /* Sessions mobile cards */
+    .sessions-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .session-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 14px;
+      cursor: pointer;
+    }
+    .session-card .session-date { font-size: 0.8rem; color: var(--muted); }
+    .session-card .session-name { font-weight: 600; margin: 4px 0; }
+    .session-card .session-stats { display: flex; gap: 12px; font-size: 0.85rem; color: var(--muted); flex-wrap: wrap; }
+
+    @media (max-width: 768px) {
+      #sessionsTable { display: none; }
+    }
+    @media (min-width: 769px) {
+      .sessions-cards { display: none; }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header class="hero fade-in">
-      <div class="eyebrow">Dashboard Academia</div>
-      <h1>Sua Evolução</h1>
-      <p class="subtitle">Acompanhe seu progresso na academia com dados reais.</p>
+    <header class="hero">
+      <div class="hero-top">
+        <h1 id="appTitle">Evolução de William</h1>
+        <div class="hero-meta">
+          <span id="lastWorkout"></span>
+          <span class="dot">·</span>
+          <span>Atualizado <span id="updatedAt">--:--</span></span>
+        </div>
+      </div>
+      <div class="hero-period" id="rangePickerHost"></div>
+      <div id="summarySlot" class="summary-slot"></div>
     </header>
-    
-    <section class="kpis" id="kpis">
-      <!-- KPIs serão preenchidos via JS -->
-    </section>
-    
-    <section class="chart-box fade-in">
-      <h2>Volume Mensal</h2>
-      <canvas id="volumeChart"></canvas>
-    </section>
-    
-    <section class="chart-box fade-in">
-      <h2>Top 10 Exercícios por 1RM</h2>
-      <canvas id="oneRmChart"></canvas>
-    </section>
-    
-    <section class="chart-box fade-in">
-      <h2>Frequência Semanal</h2>
-      <canvas id="weekdayChart"></canvas>
+
+    <nav class="tabs-nav">
+      <button data-tab="overview" class="active">Visão Geral</button>
+      <button data-tab="strength">Força</button>
+      <button data-tab="consistency">Consistência</button>
+      <button data-tab="history">Histórico</button>
+    </nav>
+
+    <section class="tab-panel" data-tab="overview">
+      <section class="kpis" id="kpis"></section>
+      <div class="chart-row">
+        <div class="chart-box">
+          <h2>Volume Mensal</h2>
+          <canvas id="volumeChart"></canvas>
+        </div>
+        <div class="chart-box">
+          <h2>Frequência Semanal</h2>
+          <canvas id="weekdayChart"></canvas>
+        </div>
+      </div>
     </section>
 
-    <section class="chart-box fade-in">
-      <h2>🔥 Streak &amp; Consistência</h2>
-      <div id="streakCards" class="kpis"></div>
+    <section class="tab-panel" data-tab="strength" hidden>
+      <div class="chart-box">
+        <h2>Top 10 por 1RM</h2>
+        <canvas id="oneRmChart"></canvas>
+      </div>
+      <section class="chart-box">
+        <h2>Recordes Pessoais</h2>
+        <div id="prGrid" class="pr-grid"></div>
+      </section>
     </section>
 
-    <section class="chart-box fade-in">
-      <h2>📅 Volume Diário (Heatmap Mensal)</h2>
-      <div id="heatmap" class="heatmap"></div>
-      <p class="heatmap-legend">
-        <span>Menos</span>
-        <span class="heat-cell" data-level="0"></span>
-        <span class="heat-cell" data-level="1"></span>
-        <span class="heat-cell" data-level="2"></span>
-        <span class="heat-cell" data-level="3"></span>
-        <span class="heat-cell" data-level="4"></span>
-        <span>Mais</span>
-      </p>
+    <section class="tab-panel" data-tab="consistency" hidden>
+      <section class="chart-box">
+        <h2>Aderência Semanal</h2>
+        <div id="adherenceCards" class="kpis"></div>
+      </section>
+      <section class="chart-box">
+        <h2>Volume Diário</h2>
+        <div id="heatmap" class="heatmap"></div>
+        <p class="heatmap-legend">
+          <span>Menos</span>
+          <span class="heat-cell" data-level="0"></span>
+          <span class="heat-cell" data-level="1"></span>
+          <span class="heat-cell" data-level="2"></span>
+          <span class="heat-cell" data-level="3"></span>
+          <span class="heat-cell" data-level="4"></span>
+          <span>Mais</span>
+        </p>
+      </section>
     </section>
 
-    <section class="chart-box fade-in">
-      <h2>🏆 Personal Records (com evolução)</h2>
-      <div id="prGrid" class="pr-grid"></div>
-    </section>
-
-    <section class="chart-box fade-in">
-      <h2>Últimas Sessões</h2>
-      <table id="sessionsTable">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Nome</th>
-            <th>Exercícios</th>
-            <th>Séries</th>
-            <th>Volume</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+    <section class="tab-panel" data-tab="history" hidden>
+      <section class="chart-box">
+        <h2>Últimas Sessões</h2>
+        <table id="sessionsTable">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Nome</th>
+              <th>Exercícios</th>
+              <th>Séries</th>
+              <th>Volume</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div id="sessionsCards" class="sessions-cards"></div>
+      </section>
     </section>
   </div>
-  
+
   <!--
     Chart.js 4.4.7 via cdn.jsdelivr.net.
-    Preencha o SRI abaixo para garantir integridade contra comprometimento do CDN.
-    Como obter:
-      curl -s https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js | \
-        openssl dgst -sha384 -binary | openssl base64 -A
-    Em seguida, cole o hash em integrity="sha384-...".
   -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
   <!-- Módulos (namespaces globais, ordem importa) -->
+  <script defer src="js/i18n.js"></script>
   <script defer src="js/state.js"></script>
   <script defer src="js/data.js"></script>
-  <script defer src="js/charts.js"></script>
   <script defer src="js/ui.js"></script>
+  <script defer src="js/charts.js"></script>
   <script defer src="js/render.js"></script>
   <script defer src="js/drop.js"></script>
+  <script defer src="js/summary.js"></script>
+  <script defer src="js/tabs.js"></script>
   <script defer src="js/main.js"></script>
 </body>
 </html>
