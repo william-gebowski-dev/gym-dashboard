@@ -9,6 +9,33 @@ window.Render = (function () {
   const { App, applyRange } = window.State;
   const { kpiCard, spanText, prCard, prBadge, sessionCard, openSessionModal } = window.UI;
   const { getOrCreateChart, destroySparklines } = window.Charts;
+
+  // Lazy load: chart boxes ficam com data-chart-id, chart criado só quando visível
+  const chartRegistry = new Map(); // chartId -> creator fn
+  const chartObserver = (typeof IntersectionObserver !== 'function')
+    ? null
+    : new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const box = entry.target;
+          const id = box.dataset.chartId;
+          const fn = chartRegistry.get(id);
+          if (fn) {
+            fn();
+            chartRegistry.delete(id);
+            chartObserver.unobserve(box);
+          }
+        }
+      }, { rootMargin: '300px' });
+
+  function lazyChart(boxId, canvasId, fn) {
+    if (!chartObserver) { fn(); return; }
+    const box = document.getElementById(boxId);
+    if (!box) return;
+    box.dataset.chartId = canvasId;
+    chartRegistry.set(canvasId, fn);
+    chartObserver.observe(box);
+  }
   const { computePRs, computePeriodDelta, computeWeeklyAdherence, classifyPRs } = window.Data;
   const { t } = window.I18N;
 
@@ -639,16 +666,15 @@ window.Render = (function () {
   function rerender() {
     const filtered = applyRange(App.sessions, App.range);
     renderKPIs(filtered);
-    renderVolumeChart(filtered);
-    renderOneRmChart(filtered);
+    lazyChart('tab-overview', 'volumeChart', () => renderVolumeChart(filtered));
     renderWeekdayChart(filtered);
     renderSessionsTable(filtered);
     renderAdherence(filtered);
     renderHeatmap(filtered);
     renderPRs();
-    renderRPEChart();
+    lazyChart('tab-strength', 'rpeChart', () => renderRPEChart());
     renderCoachAdherence();
-    renderMeasurementsChart();
+    lazyChart('tab-history', 'measurementsChart', () => renderMeasurementsChart());
     renderComparisonChart();
   }
 
