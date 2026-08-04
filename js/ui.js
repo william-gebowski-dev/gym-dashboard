@@ -86,6 +86,85 @@ window.UI = (function () {
     return card;
   }
 
+  function renderSessionExercises(sessionId) {
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-exercises';
+
+    const raw = (window.State && window.State.App && window.State.App.rawSessions) || [];
+    const rawSession = raw.find(s => s.id === sessionId);
+
+    if (!rawSession) {
+      const p = document.createElement('p');
+      p.className = 'modal-hint';
+      p.textContent = 'Dados detalhados indisponíveis para esta sessão.';
+      wrap.append(p);
+      return wrap;
+    }
+
+    const exercises = rawSession.workoutSessionExercises ?? [];
+    if (exercises.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'modal-hint';
+      p.textContent = 'Sessão sem exercícios registrados.';
+      wrap.append(p);
+      return wrap;
+    }
+
+    for (const ex of exercises) {
+      const sets = (ex.workoutSessionSets ?? []).filter(s => s.isComplete && typeof s.weight === 'number');
+      if (sets.length === 0) continue;
+
+      const block = document.createElement('div');
+      block.className = 'modal-exercise';
+
+      const heading = document.createElement('h3');
+      heading.className = 'modal-exercise-name';
+      heading.textContent = ex.exercise?.name || 'Exercício';
+
+      const muscle = document.createElement('p');
+      muscle.className = 'modal-exercise-meta';
+      const primary = (ex.exercise?.primaryMuscleGroups ?? []).map(m => m.name).join(', ');
+      const eq = ex.exercise?.equipment || '';
+      muscle.textContent = [primary, eq].filter(Boolean).join(' · ');
+
+      const table = document.createElement('table');
+      table.className = 'modal-sets-table';
+      const thead = document.createElement('thead');
+      thead.innerHTML = '<tr><th>#</th><th>Reps</th><th>Peso</th><th>1RM</th><th>Descanso</th></tr>';
+      table.append(thead);
+
+      const tbody = document.createElement('tbody');
+      sets.forEach((s, idx) => {
+        const tr = document.createElement('tr');
+        const cells = [
+          String(idx + 1),
+          String(s.reps ?? '-'),
+          `${Number(s.weight).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg`,
+          s.oneRepMax ? `${Number(s.oneRepMax).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg` : '-',
+          s.restTime ? `${Math.round(s.restTime / 60)} min` : '-',
+        ];
+        cells.forEach(c => {
+          const td = document.createElement('td');
+          td.textContent = c;
+          tr.append(td);
+        });
+        tbody.append(tr);
+      });
+      table.append(tbody);
+
+      block.append(heading, muscle, table);
+      wrap.append(block);
+    }
+
+    if (!wrap.children.length) {
+      const p = document.createElement('p');
+      p.className = 'modal-hint';
+      p.textContent = 'Sessão sem séries completas registradas.';
+      wrap.append(p);
+    }
+    return wrap;
+  }
+
   function openSessionModal(session) {
     const existing = document.getElementById('sessionModal');
     if (existing) existing.remove();
@@ -127,11 +206,8 @@ window.UI = (function () {
       spanStrong(`${vol} kg volume`),
     );
 
-    const hint = document.createElement('p');
-    hint.className = 'modal-hint';
-    hint.textContent = 'Drill-down completo em próxima iteração.';
-
-    content.append(closeBtn, title, date, stats, hint);
+    content.append(closeBtn, title, date, stats);
+    content.append(renderSessionExercises(session.id));
     overlay.append(content);
     document.body.append(overlay);
 

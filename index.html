@@ -328,6 +328,8 @@
       border-radius: var(--radius);
       padding: 32px;
       max-width: 600px;
+      max-height: 85vh;
+      overflow-y: auto;
       width: 100%;
       position: relative;
       border: 1px solid rgba(255,255,255,0.1);
@@ -342,6 +344,48 @@
     .modal-date { color: var(--muted); margin: 8px 0 16px; }
     .modal-stats { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
     .modal-hint { color: var(--muted); font-size: 0.85rem; }
+    .modal-exercises {
+      max-height: 50vh;
+      overflow-y: auto;
+      margin-top: 12px;
+      padding-right: 4px;
+    }
+    .modal-exercise {
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(255,255,255,0.02);
+    }
+    .modal-exercise-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .modal-exercise-meta {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .modal-sets-table {
+      width: 100%;
+      font-size: 0.85rem;
+    }
+    .modal-sets-table th,
+    .modal-sets-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      text-align: left;
+    }
+    .modal-sets-table th {
+      color: var(--muted);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .modal-sets-table tbody tr:last-child td {
+      border-bottom: none;
+    }
 
     /* Sessions mobile cards */
     .sessions-cards {
