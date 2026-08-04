@@ -7,31 +7,56 @@
  */
 window.Render = (function () {
   const { App, applyRange } = window.State;
-  const { kpiCard, spanText } = window.UI;
+  const { kpiCard, spanText, prCard, prBadge, sessionCard, openSessionModal } = window.UI;
   const { getOrCreateChart, destroySparklines } = window.Charts;
-  const { computePRs, computeStreak } = window.Data;
+  const { computePRs, computeStreak, computePeriodDelta, computeWeeklyAdherence, classifyPRs } = window.Data;
+  const { t } = window.I18N;
 
   function renderKPIs(sessions) {
-    const totalSessions = sessions.length;
-    const totalVolume = sessions.reduce((acc, s) => acc + s.volume, 0);
-    const avgVolume = totalSessions ? totalVolume / totalSessions : 0;
+    const sessionsDelta = computePeriodDelta(sessions, App.range, 'volume', 'count');
+    const volumeDelta = computePeriodDelta(sessions, App.range, 'volume', 'sum');
+    const adh = computeWeeklyAdherence(sessions, App.weeklyGoal);
+    const prevAdh = computePeriodDelta(sessions, App.range, 'weeklyFreq', 'avg');
     const lastDate = sessions.at(-1)?.date;
 
-    const sessionsWithDuration = sessions.filter(s => s.durationMin != null);
-    const avgDuration = sessionsWithDuration.length
-      ? sessionsWithDuration.reduce((acc, s) => acc + s.durationMin, 0) / sessionsWithDuration.length
-      : null;
-    const totalDuration = sessionsWithDuration.reduce((acc, s) => acc + s.durationMin, 0);
-    const efficiency = totalDuration > 0 ? totalVolume / totalDuration : 0;
+    const recentCutoff = Date.now() - 30 * 86_400_000;
+    const newPRs = sessions.filter(s => s.date && s.date.getTime() >= recentCutoff).length;
+
+    const buildDelta = (d) => {
+      if (!d || d.previous <= 0) return null;
+      return {
+        pct: d.deltaPct,
+        direction: d.deltaPct > 0 ? 'up' : d.deltaPct < 0 ? 'down' : 'flat',
+      };
+    };
 
     const container = document.getElementById('kpis');
+    if (!container) return;
     container.replaceChildren(
-      kpiCard(totalSessions, 'Total de Sessões'),
-      kpiCard(totalVolume.toLocaleString('pt-BR'), 'Volume Total (kg)'),
-      kpiCard(Math.round(avgVolume), 'Média por Sessão (kg)'),
-      kpiCard(avgDuration != null ? `${Math.round(avgDuration)} min` : '—', 'Duração Média'),
-      kpiCard(efficiency > 0 ? `${Math.round(efficiency)} kg/min` : '—', 'Tonelagem/min'),
-      kpiCard(lastDate ? lastDate.toLocaleDateString('pt-BR') : '-', 'Último Treino'),
+      kpiCard(String(sessions.length), t('kpi.sessions'), buildDelta(sessionsDelta)),
+      kpiCard(Math.round(volumeDelta.current).toLocaleString('pt-BR'), t('kpi.volume'), buildDelta(volumeDelta)),
+      kpiCard(adh.weeklyFreq.toFixed(1), t('kpi.weeklyFreq'), buildDelta(prevAdh)),
+      kpiCard(String(newPRs), t('kpi.newPRs'), null),
+    );
+
+    const updatedLast = document.getElementById('lastWorkout');
+    if (updatedLast) {
+      updatedLast.textContent = lastDate
+        ? `${t('header.lastWorkout')}: ${lastDate.toLocaleDateString('pt-BR')}`
+        : '';
+    }
+  }
+
+  function renderAdherence(sessions) {
+    const adh = computeWeeklyAdherence(sessions, App.weeklyGoal);
+    const goal = App.weeklyGoal;
+    const container = document.getElementById('adherenceCards');
+    if (!container) return;
+    container.replaceChildren(
+      kpiCard(String(adh.currentStreak), t('kpi.currentAdherence', { goal })),
+      kpiCard(String(adh.longestStreak), t('kpi.longestAdherence')),
+      kpiCard(`${adh.weeksHit}/${adh.totalWeeks}`, t('kpi.weeksHit')),
+      kpiCard(adh.weeklyFreq.toFixed(1), t('kpi.weeklyAvg')),
     );
   }
 
@@ -192,32 +217,45 @@ window.Render = (function () {
   function renderSessionsTable(sessions) {
     const recent = sessions.slice(-10).reverse();
     const tbody = document.querySelector('#sessionsTable tbody');
-    tbody.replaceChildren();
+    if (tbody) tbody.replaceChildren();
+    const cards = document.getElementById('sessionsCards');
+    if (cards) cards.replaceChildren();
     for (const s of recent) {
-      const tr = document.createElement('tr');
-      for (const value of [
-        s.date.toLocaleDateString('pt-BR'),
-        s.name,
-        String(s.exercises),
-        String(s.sets),
-        `${s.volume.toLocaleString('pt-BR')} kg`,
-      ]) {
-        const td = document.createElement('td');
-        td.textContent = value;
-        tr.appendChild(td);
+      if (tbody) {
+        const tr = document.createElement('tr');
+        tr.dataset.sessionId = s.id || '';
+        for (const value of [
+          s.date.toLocaleDateString('pt-BR'),
+          s.name || 'Treino',
+          String(s.exercises ?? 0),
+          String(s.sets ?? 0),
+          `${Math.round(s.volume).toLocaleString('pt-BR')} kg`,
+        ]) {
+          const td = document.createElement('td');
+          td.textContent = value;
+          tr.appendChild(td);
+        }
+        tr.addEventListener('click', () => openSessionModal({
+          id: s.id,
+          date: s.date,
+          name: s.name,
+          exercisesCount: s.exercises,
+          setsCount: s.sets,
+          volume: s.volume,
+        }));
+        tbody.appendChild(tr);
       }
-      tbody.appendChild(tr);
+      if (cards) {
+        cards.appendChild(sessionCard({
+          id: s.id,
+          date: s.date,
+          name: s.name,
+          exercisesCount: s.exercises,
+          setsCount: s.sets,
+          volume: s.volume,
+        }));
+      }
     }
-  }
-
-  function renderStreak(sessions) {
-    const { current, record, lastGap } = computeStreak(sessions);
-    const container = document.getElementById('streakCards');
-    container.replaceChildren(
-      kpiCard(current > 0 ? `🔥 ${current}` : '0', current > 0 ? 'Sequência Atual (dias)' : 'Sem sequência ativa'),
-      kpiCard(record, 'Recorde Pessoal (dias)'),
-      kpiCard(lastGap === 0 ? 'Hoje' : lastGap === 1 ? 'Ontem' : `${lastGap}d atrás`, 'Último Treino'),
-    );
   }
 
   function renderHeatmap(sessions) {
@@ -278,6 +316,12 @@ window.Render = (function () {
 
   function renderPRs() {
     const prs = computePRs(App.rawSessions);
+    const classified = classifyPRs(prs.map(p => ({
+      name: p.name,
+      weight: p.weight,
+      date: p.date,
+      history: p.history,
+    })));
     const grid = document.getElementById('prGrid');
     destroySparklines();
     grid.replaceChildren();
@@ -285,88 +329,78 @@ window.Render = (function () {
       grid.textContent = 'Nenhum PR registrado ainda.';
       return;
     }
-    const today = new Date();
-    for (const pr of prs) {
-      const card = document.createElement('div');
-      card.className = 'pr-card';
-      const name = document.createElement('div');
-      name.className = 'pr-name';
-      name.textContent = pr.name;
-      name.title = pr.name;
-      card.appendChild(name);
-      const weight = document.createElement('div');
-      weight.className = 'pr-weight';
-      weight.textContent = `${Math.round(pr.weight)} kg`;
-      card.appendChild(weight);
-      const meta = document.createElement('div');
-      meta.className = 'pr-meta';
-      const dateStr = pr.date ? pr.date.toLocaleDateString('pt-BR') : '—';
-      meta.append(
-        spanText('PR: '),
-        spanText(dateStr),
-        spanText(' · '),
-        spanText(`${pr.history.length} séries`),
-      );
-      card.appendChild(meta);
 
-      if (pr.date) {
-        const daysSince = Math.floor((today - pr.date) / 86_400_000);
-        const badge = document.createElement('span');
-        badge.className = 'pr-badge';
-        const thisMonth = today.getMonth() === pr.date.getMonth() && today.getFullYear() === pr.date.getFullYear();
-        if (thisMonth) {
-          badge.classList.add('new');
-          badge.textContent = '🆕';
-        } else if (daysSince > 60) {
-          badge.classList.add('stale');
-          badge.textContent = `📉 ${daysSince}d`;
+    const renderGroup = (label, items, status) => {
+      if (!items.length) return;
+      const heading = document.createElement('div');
+      heading.className = 'pr-group-heading';
+      heading.textContent = label;
+      grid.appendChild(heading);
+      for (const pr of items) {
+        const card = prCard(pr);
+        const weight = card.querySelector('.pr-weight');
+        if (weight) weight.textContent = `${Math.round(pr.weight)} kg`;
+
+        const meta = document.createElement('div');
+        meta.className = 'pr-meta';
+        const dateStr = pr.date ? pr.date.toLocaleDateString('pt-BR') : '—';
+        meta.append(
+          spanText('PR: '),
+          spanText(dateStr),
+          spanText(' · '),
+          spanText(`${pr.history.length} séries`),
+        );
+        card.appendChild(meta);
+        card.appendChild(prBadge(status));
+
+        const canvas = document.createElement('canvas');
+        canvas.className = 'pr-sparkline';
+        canvas.height = 28;
+        card.appendChild(canvas);
+        grid.appendChild(card);
+
+        const sessionsMax = new Map();
+        for (const h of pr.history) {
+          const k = h.date.toISOString().slice(0, 10);
+          sessionsMax.set(k, Math.max(sessionsMax.get(k) || 0, h.weight));
         }
-        card.appendChild(badge);
-      }
+        const points = [...sessionsMax.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([k, v]) => ({ x: k, y: v }));
 
-      const canvas = document.createElement('canvas');
-      canvas.className = 'pr-sparkline';
-      canvas.height = 28;
-      card.appendChild(canvas);
-      grid.appendChild(card);
-
-      const sessionsMax = new Map();
-      for (const h of pr.history) {
-        const k = h.date.toISOString().slice(0, 10);
-        sessionsMax.set(k, Math.max(sessionsMax.get(k) || 0, h.weight));
+        if (points.length >= 2) {
+          const canvasId = `pr-spark-${grid.children.length}`;
+          canvas.id = canvasId;
+          getOrCreateChart(canvasId, {
+            type: 'line',
+            data: {
+              labels: points.map(p => p.x),
+              datasets: [{
+                data: points.map(p => p.y),
+                borderColor: '#e94560',
+                backgroundColor: 'rgba(233,69,96,0.15)',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                tension: 0.25,
+                fill: true,
+              }],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false }, tooltip: { enabled: false } },
+              scales: { x: { display: false }, y: { display: false, beginAtZero: false } },
+            },
+          });
+        } else {
+          canvas.remove();
+        }
       }
-      const points = [...sessionsMax.entries()]
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([k, v]) => ({ x: k, y: v }));
+    };
 
-      if (points.length >= 2) {
-        const canvasId = `pr-spark-${grid.children.length}`;
-        canvas.id = canvasId;
-        getOrCreateChart(canvasId, {
-          type: 'line',
-          data: {
-            labels: points.map(p => p.x),
-            datasets: [{
-              data: points.map(p => p.y),
-              borderColor: '#e94560',
-              backgroundColor: 'rgba(233,69,96,0.15)',
-              borderWidth: 1.5,
-              pointRadius: 0,
-              tension: 0.25,
-              fill: true,
-            }],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { enabled: false } },
-            scales: { x: { display: false }, y: { display: false, beginAtZero: false } },
-          },
-        });
-      } else {
-        canvas.remove();
-      }
-    }
+    renderGroup(t('pr.group.new'), classified.new, 'new');
+    renderGroup(t('pr.group.evolving'), classified.evolving, 'evolving');
+    renderGroup(t('pr.group.stagnant'), classified.stagnant, 'stagnant');
   }
 
   function renderHero() {
@@ -420,14 +454,14 @@ window.Render = (function () {
     renderOneRmChart(filtered);
     renderWeekdayChart(filtered);
     renderSessionsTable(filtered);
-    renderStreak(App.sessions);
+    renderAdherence(filtered);
     renderHeatmap(filtered);
     renderPRs();
   }
 
   return {
     renderKPIs, renderVolumeChart, renderOneRmChart, renderWeekdayChart,
-    renderSessionsTable, renderStreak, renderHeatmap, renderPRs,
+    renderSessionsTable, renderAdherence, renderHeatmap, renderPRs,
     renderHero, rerender,
   };
 })();
