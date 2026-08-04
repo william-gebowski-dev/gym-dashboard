@@ -19,8 +19,9 @@ window.Render = (function () {
     const prevAdh = computePeriodDelta(sessions, App.range, 'weeklyFreq', 'avg');
     const lastDate = sessions.at(-1)?.date;
 
-    const recentCutoff = Date.now() - 30 * 86_400_000;
-    const newPRs = sessions.filter(s => s.date && s.date.getTime() >= recentCutoff).length;
+    const allPRs = window.Data.computePRs(App.rawSessions);
+    const classified = window.Data.classifyPRs(allPRs);
+    const newPRs = classified.new.length;
 
     const buildDelta = (d) => {
       if (!d || d.previous <= 0) return null;
