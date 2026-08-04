@@ -67,6 +67,7 @@ window.Main = (function () {
         );
       }
       showFileDropZone();
+      window.Tabs.init();
     }
   }
 
