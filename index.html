@@ -3,6 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self';
+      script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline';
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src https://fonts.gstatic.com;
+      img-src 'self' https://d3r2akiggou3b8.cloudfront.net data:;
+      connect-src 'self';">
   <title>Evolução — Gym Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
@@ -56,6 +63,77 @@
     .hero-meta {
       color: var(--muted);
       font-size: 0.85rem;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .hero-action {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 10px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .hero-action:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .comparison-select {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 16px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .comparison-select label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .comparison-select input { cursor: pointer; }
+    .coach-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .coach-week {
+      font-size: 0.85rem;
+      color: var(--muted);
+      min-width: 100px;
+    }
+    .coach-bar {
+      flex: 1;
+      height: 8px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .coach-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.3s;
+    }
+    .coach-bar-fill.high { background: var(--ok); }
+    .coach-bar-fill.low { background: var(--warn); }
+    .coach-pct {
+      font-size: 0.85rem;
+      min-width: 50px;
+      text-align: right;
+      color: var(--text);
     }
     .hero-meta .dot { margin: 0 6px; }
     .hero-period {
@@ -417,10 +495,14 @@
     <header class="hero">
       <div class="hero-top">
         <h1 id="appTitle">Evolução de William</h1>
-        <div class="hero-meta">
-          <span id="lastWorkout"></span>
-          <span class="dot">·</span>
-          <span>Atualizado <span id="updatedAt">--:--</span></span>
+        <div class="hero-actions">
+          <button id="exportBtn" class="hero-action" title="Exportar PNG" aria-label="Exportar PNG">📸</button>
+          <button id="shareBtn" class="hero-action" title="Copiar link" aria-label="Copiar link">🔗</button>
+          <div class="hero-meta">
+            <span id="lastWorkout"></span>
+            <span class="dot">·</span>
+            <span>Atualizado <span id="updatedAt">--:--</span></span>
+          </div>
         </div>
       </div>
       <div class="hero-period" id="rangePickerHost"></div>
@@ -453,6 +535,15 @@
         <h2>Top 10 por 1RM</h2>
         <canvas id="oneRmChart"></canvas>
       </div>
+      <div class="chart-box">
+        <h2>Intensidade: RPE × %1RM</h2>
+        <canvas id="rpeChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h2>Comparar Exercícios</h2>
+        <div id="comparisonSelect" class="comparison-select"></div>
+        <canvas id="comparisonChart"></canvas>
+      </div>
       <section class="chart-box">
         <h2>Recordes Pessoais</h2>
         <div id="prGrid" class="pr-grid"></div>
@@ -463,6 +554,10 @@
       <section class="chart-box">
         <h2>Aderência Semanal</h2>
         <div id="adherenceCards" class="kpis"></div>
+      </section>
+      <section class="chart-box">
+        <h2>Aderência ao Plano do Coach</h2>
+        <div id="coachList"></div>
       </section>
       <section class="chart-box">
         <h2>Volume Diário</h2>
@@ -496,6 +591,11 @@
         </table>
         <div id="sessionsCards" class="sessions-cards"></div>
       </section>
+      <section class="chart-box">
+        <h2>Evolução Corporal</h2>
+        <canvas id="measurementsChart"></canvas>
+        <div id="measurementsEmpty" class="modal-hint" hidden>Sem medidas registradas ainda.</div>
+      </section>
     </section>
   </div>
 
@@ -503,6 +603,7 @@
     Chart.js 4.4.7 via cdn.jsdelivr.net.
   -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
   <!-- Módulos (namespaces globais, ordem importa) -->
   <script defer src="js/i18n.js"></script>
   <script defer src="js/state.js"></script>
@@ -512,6 +613,10 @@
   <script defer src="js/render.js"></script>
   <script defer src="js/drop.js"></script>
   <script defer src="js/summary.js"></script>
+  <script defer src="js/rpe.js"></script>
+  <script defer src="js/coach.js"></script>
+  <script defer src="js/measurements.js"></script>
+  <script defer src="js/export.js"></script>
   <script defer src="js/tabs.js"></script>
   <script defer src="js/main.js"></script>
 </body>

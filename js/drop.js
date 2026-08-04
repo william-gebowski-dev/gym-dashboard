@@ -54,7 +54,12 @@ window.Drop = (function () {
       const file = e.dataTransfer?.files?.[0];
       if (!file) return;
       if (file.size > 50 * 1024 * 1024) {
-        alert('Arquivo muito grande (>50 MB).');
+        showError(drop, `Arquivo muito grande (${(file.size / 1e6).toFixed(1)} MB). Máximo: 50 MB.`);
+        return;
+      }
+      const isJsonType = file.type === 'application/json' || file.name.toLowerCase().endsWith('.json');
+      if (!isJsonType) {
+        showError(drop, `Formato inválido (${file.type || 'desconhecido'}). Envie um arquivo .json.`);
         return;
       }
       try {
@@ -68,12 +73,21 @@ window.Drop = (function () {
         drop.remove();
         window.Render.rerender();
       } catch (err) {
-        alert(`Erro ao ler JSON: ${err.message}`);
+        showError(drop, `Erro ao ler JSON: ${err.message}`);
       }
     });
 
     const hero = document.querySelector('header.hero');
     hero?.after(drop);
+  }
+
+  function showError(drop, msg) {
+    const err = document.createElement('p');
+    err.className = 'drop-error';
+    err.textContent = msg;
+    err.style.cssText = 'color: #f59e0b; margin-top: 12px; font-weight: 600;';
+    const prev = drop.querySelector('.drop-error');
+    if (prev) prev.replaceWith(err); else drop.append(err);
   }
 
   return { showFileDropZone };

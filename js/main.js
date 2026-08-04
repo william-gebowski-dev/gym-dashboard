@@ -41,7 +41,9 @@ window.Main = (function () {
   async function main() {
     App.range = parseRangeFromURL();
     App.tab = window.State.parseTabFromURL();
+    window.State.loadState?.();
     renderHero();
+    wireExportButtons();
 
     if (location.protocol === 'file:') {
       showFileDropZone();
@@ -56,6 +58,13 @@ window.Main = (function () {
       updateTimestamps(sessions);
       renderSummary(sessions);
       rerender();
+      window.RPE?.load().then(sets => { App.rpeSets = sets; rerender(); }).catch(() => {});
+      window.Coach?.load().then(workouts => { App.coachWorkouts = workouts; rerender(); }).catch(() => {});
+      window.Measurements?.load().then(({ measurements, logs }) => {
+        App.measurements = measurements;
+        App.measurementLogs = logs;
+        rerender();
+      }).catch(() => {});
       window.Tabs.init();
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
@@ -71,10 +80,24 @@ window.Main = (function () {
     }
   }
 
+  function wireExportButtons() {
+    const exportBtn = document.getElementById('exportBtn');
+    if (exportBtn) exportBtn.addEventListener('click', async () => {
+      try { await window.Export.toPNG(); } catch (e) { alert(e.message); }
+    });
+    const shareBtn = document.getElementById('shareBtn');
+    if (shareBtn) shareBtn.addEventListener('click', async () => {
+      const res = await window.Export.shareURL();
+      shareBtn.textContent = res.ok ? '✓' : '✗';
+      setTimeout(() => { shareBtn.textContent = '🔗'; }, 1500);
+    });
+  }
+
   window.addEventListener('gym:rangechange', () => {
     rerender();
     renderSummary(App.sessions);
     updateTimestamps(App.sessions);
+    window.State.persistState?.();
   });
 
   if (document.readyState === 'loading') {

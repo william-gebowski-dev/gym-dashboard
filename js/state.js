@@ -19,6 +19,10 @@ window.State = (function () {
     tab: 'overview',
     weeklyGoal: 4,
     loadedAt: null,
+    rpeSets: null,
+    coachWorkouts: null,
+    measurements: null,
+    measurementLogs: null,
   };
 
   function applyRange(sessions, range) {
@@ -76,5 +80,26 @@ window.State = (function () {
     history.replaceState({}, '', url);
   }
 
-  return { App, applyRange, parseRangeFromURL, syncRangeToURL, daysAgoISO, parseTabFromURL, syncTabToURL };
+  function persistState() {
+    try {
+      localStorage.setItem('gym-dashboard', JSON.stringify({
+        range: App.range,
+        tab: App.tab,
+      }));
+    } catch {}
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem('gym-dashboard');
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (saved.range && (saved.range.label || saved.range.from !== undefined)) {
+        if (!App.range || App.range.label === 'all') App.range = saved.range;
+      }
+      if (saved.tab && !App.tab) App.tab = saved.tab;
+    } catch {}
+  }
+
+  return { App, applyRange, parseRangeFromURL, syncRangeToURL, daysAgoISO, parseTabFromURL, syncTabToURL, persistState, loadState };
 })();

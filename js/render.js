@@ -441,6 +441,201 @@ window.Render = (function () {
     });
   }
 
+  function renderRPEChart() {
+    const canvas = document.getElementById('rpeChart');
+    if (!canvas || !window.RPE || !App.rpeSets) return;
+    const data = window.RPE.buildScatterData(App.rpeSets, App.rawSessions);
+    if (!data.length) {
+      canvas.replaceWith(Object.assign(document.createElement('p'), {
+        className: 'modal-hint',
+        textContent: 'Sem dados de RPE suficientes.',
+      }));
+      return;
+    }
+    const colors = ['#e94560', '#ff6b81', '#22c55e', '#f59e0b', '#3b82f6', '#a855f7', '#06b6d4', '#ec4899'];
+    getOrCreateChart('rpeChart', {
+      type: 'scatter',
+      data: {
+        datasets: data.map((g, i) => ({
+          label: g.name,
+          data: g.points,
+          backgroundColor: colors[i % colors.length],
+          borderColor: colors[i % colors.length],
+          pointRadius: 3,
+          pointHoverRadius: 5,
+        })),
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#f4f4f5', font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const p = ctx.raw;
+                return `${ctx.dataset.label}: ${p.weight}kg×${p.reps} (${p.x.toFixed(0)}% 1RM, RPE ${p.y})`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: { title: { display: true, text: '% de 1RM', color: '#a1a1aa' }, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#a1a1aa' } },
+          y: { title: { display: true, text: 'RPE', color: '#a1a1aa' }, min: 5, max: 10, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#a1a1aa' } },
+        },
+      },
+    });
+  }
+
+  function renderCoachAdherence() {
+    const container = document.getElementById('coachList');
+    if (!container || !window.Coach) return;
+    if (!App.coachWorkouts) {
+      container.replaceChildren(Object.assign(document.createElement('p'), {
+        className: 'modal-hint', textContent: 'Carregando…',
+      }));
+      return;
+    }
+    const rows = window.Coach.computeAdherence(App.coachWorkouts, App.rawSessions);
+    if (!rows.length) {
+      container.replaceChildren(Object.assign(document.createElement('p'), {
+        className: 'modal-hint', textContent: 'Sem dados de coach disponíveis.',
+      }));
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    for (const r of rows) {
+      const row = document.createElement('div');
+      row.className = 'coach-row';
+      const week = document.createElement('div');
+      week.className = 'coach-week';
+      week.textContent = r.week;
+      const barWrap = document.createElement('div');
+      barWrap.className = 'coach-bar';
+      const fill = document.createElement('div');
+      fill.className = 'coach-bar-fill';
+      if (r.adherencePct === null) {
+        fill.style.width = `${Math.min(100, (r.completed / 4) * 100)}%`;
+        fill.classList.add(r.completed >= 4 ? 'high' : '');
+      } else {
+        fill.style.width = `${r.adherencePct}%`;
+        fill.classList.add(r.adherencePct >= 80 ? 'high' : r.adherencePct < 50 ? 'low' : '');
+      }
+      barWrap.append(fill);
+      const pct = document.createElement('div');
+      pct.className = 'coach-pct';
+      pct.textContent = r.adherencePct === null
+        ? `${r.completed}/4`
+        : `${r.adherencePct}%`;
+      row.append(week, barWrap, pct);
+      frag.append(row);
+    }
+    container.replaceChildren(frag);
+  }
+
+  function renderMeasurementsChart() {
+    const canvas = document.getElementById('measurementsChart');
+    const empty = document.getElementById('measurementsEmpty');
+    if (!canvas || !window.Measurements) return;
+    if (!App.measurementLogs) return;
+    const points = window.Measurements.buildTimeline(App.measurements, App.measurementLogs);
+    if (!points.length) {
+      canvas.hidden = true;
+      if (empty) empty.hidden = false;
+      return;
+    }
+    canvas.hidden = false;
+    if (empty) empty.hidden = true;
+    const byType = new Map();
+    for (const p of points) {
+      if (!byType.has(p.type)) byType.set(p.type, []);
+      byType.get(p.type).push({ x: p.date, y: p.value });
+    }
+    const palette = ['#e94560', '#22c55e', '#f59e0b', '#3b82f6', '#a855f7', '#06b6d4'];
+    const datasets = [...byType.entries()].map(([type, data], i) => ({
+      label: type,
+      data,
+      borderColor: palette[i % palette.length],
+      backgroundColor: palette[i % palette.length] + '33',
+      tension: 0.25,
+      pointRadius: 3,
+    }));
+    getOrCreateChart('measurementsChart', {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#f4f4f5' } } },
+        scales: {
+          x: { type: 'time', time: { unit: 'month' }, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#a1a1aa' } },
+          y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#a1a1aa' } },
+        },
+      },
+    });
+  }
+
+  function renderComparisonChart() {
+    const canvas = document.getElementById('comparisonChart');
+    const select = document.getElementById('comparisonSelect');
+    if (!canvas || !select) return;
+    const prs = computePRs(App.rawSessions);
+    if (!prs.length) {
+      select.replaceChildren();
+      return;
+    }
+    if (!select.children.length) {
+      const frag = document.createDocumentFragment();
+      for (const pr of prs.slice(0, 12)) {
+        const label = document.createElement('label');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = pr.name;
+        input.addEventListener('change', renderComparisonChart);
+        label.append(input, document.createTextNode(pr.name));
+        frag.append(label);
+      }
+      select.replaceChildren(frag);
+    }
+    const checked = [...select.querySelectorAll('input:checked')].map(i => i.value).slice(0, 5);
+    if (!checked.length) {
+      getOrCreateChart('comparisonChart', { type: 'line', data: { labels: [], datasets: [] }, options: { plugins: { legend: { display: false } } } });
+      return;
+    }
+    const palette = ['#e94560', '#22c55e', '#f59e0b', '#3b82f6', '#a855f7'];
+    const allDates = new Set();
+    const datasets = checked.map((name, i) => {
+      const pr = prs.find(p => p.name === name);
+      const points = (pr?.history ?? []).map(h => ({
+        x: h.date.toISOString().slice(0, 10),
+        y: h.weight,
+      }));
+      points.forEach(p => allDates.add(p.x));
+      return {
+        label: name,
+        data: points,
+        borderColor: palette[i % palette.length],
+        backgroundColor: palette[i % palette.length] + '22',
+        tension: 0.25,
+        pointRadius: 2,
+      };
+    });
+    const labels = [...allDates].sort();
+    getOrCreateChart('comparisonChart', {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#f4f4f5' } } },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#a1a1aa' } },
+          y: { title: { display: true, text: 'kg', color: '#a1a1aa' }, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#a1a1aa' } },
+        },
+      },
+    });
+  }
+
   function rerender() {
     const filtered = applyRange(App.sessions, App.range);
     renderKPIs(filtered);
@@ -451,11 +646,16 @@ window.Render = (function () {
     renderAdherence(filtered);
     renderHeatmap(filtered);
     renderPRs();
+    renderRPEChart();
+    renderCoachAdherence();
+    renderMeasurementsChart();
+    renderComparisonChart();
   }
 
   return {
     renderKPIs, renderVolumeChart, renderOneRmChart, renderWeekdayChart,
     renderSessionsTable, renderAdherence, renderHeatmap, renderPRs,
+    renderRPEChart, renderCoachAdherence, renderMeasurementsChart, renderComparisonChart,
     renderHero, rerender,
   };
 })();
