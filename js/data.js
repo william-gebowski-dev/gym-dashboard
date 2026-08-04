@@ -89,14 +89,19 @@ window.Data = (function () {
     if (!sessions || sessions.length === 0) return { current: 0, previous: 0, deltaPct: 0 };
     agg = agg || 'sum';
 
+    const sortedTimes = sessions.map(s => s.date.getTime()).sort((a, b) => a - b);
+    const dataStart = sortedTimes[0];
+    const dataEnd = sortedTimes[sortedTimes.length - 1];
+    const dataSpan = dataEnd - dataStart;
+
     const from = range && range.from ? new Date(range.from) : null;
     const to = range && range.to ? new Date(range.to + 'T23:59:59') : new Date();
-    const spanMs = (from ? from.getTime() : sessions[0].date.getTime()) - to.getTime();
-    const absSpan = Math.abs(spanMs) || (Date.now() - sessions[0].date.getTime());
+    const requestedSpan = from ? (to.getTime() - from.getTime()) : dataSpan;
+    const absSpan = requestedSpan > 0 ? requestedSpan : dataSpan;
 
     const inRange = (d) => (!from || d >= from) && d <= to;
     const inPrev = (d) => {
-      const prevTo = from || to;
+      const prevTo = from || new Date(dataEnd);
       const prevFrom = new Date(prevTo.getTime() - absSpan);
       return d >= prevFrom && d < prevTo;
     };
