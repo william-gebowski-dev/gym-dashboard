@@ -9,6 +9,7 @@ window.Render = (function () {
   const { App, applyRange } = window.State;
   const { kpiCard, spanText, prCard, prBadge, sessionCard, openSessionModal } = window.UI;
   const { getOrCreateChart, destroySparklines } = window.Charts;
+  const { computePeriodDelta, computeWeeklyAdherence, classifyPRs, pickOneRepMax } = window.Data;
 
   // Lazy load: chart boxes ficam com data-chart-id, chart criado só quando visível
   const chartRegistry = new Map(); // chartId -> creator fn
@@ -36,7 +37,7 @@ window.Render = (function () {
     chartRegistry.set(canvasId, fn);
     chartObserver.observe(box);
   }
-  const { computePRs, computePeriodDelta, computeWeeklyAdherence, classifyPRs } = window.Data;
+  const { computePRs } = window.Data;
   const { t } = window.I18N;
 
   function renderKPIs(sessions) {
@@ -44,14 +45,13 @@ window.Render = (function () {
     const volumeDelta = computePeriodDelta(sessions, App.range, 'volume', 'sum');
     const adh = computeWeeklyAdherence(sessions, App.weeklyGoal);
     const prevAdh = computePeriodDelta(sessions, App.range, 'weeklyFreq', 'avg');
-    const lastDate = sessions.at(-1)?.date;
 
     const allPRs = window.Data.computePRs(App.rawSessions);
     const classified = window.Data.classifyPRs(allPRs);
     const newPRs = classified.new.length;
 
     const buildDelta = (d) => {
-      if (!d || d.previous <= 0) return null;
+      if (!d || !d.hasBase) return null;
       return {
         pct: d.deltaPct,
         direction: d.deltaPct > 0 ? 'up' : d.deltaPct < 0 ? 'down' : 'flat',
@@ -161,8 +161,8 @@ window.Render = (function () {
         if (!name) continue;
         let best = 0;
         for (const set of ex.workoutSessionSets ?? []) {
-          if (typeof set.weight !== 'number') continue;
-          const oneRm = set.weight * (1 + set.reps / 30);
+          if (!set.isComplete) continue;
+          const oneRm = pickOneRepMax(set);
           if (oneRm > best) best = oneRm;
         }
         exerciseMax[name] = Math.max(exerciseMax[name] || 0, best);
@@ -484,7 +484,20 @@ window.Render = (function () {
       return;
     }
     const data = window.RPE.buildScatterData(App.rpeSets, App.rawSessions);
-    if (!data.length) return;
+    if (!data.length) {
+      // exibe estado vazio se ainda não houver
+      if (!canvas.parentElement?.querySelector('.rpe-empty')) {
+        const p = document.createElement('p');
+        p.className = 'modal-hint rpe-empty';
+        p.textContent = 'Sem dados suficientes para plotar RPE — JSON de sets sem ancoragem temporal.';
+        canvas.style.display = 'none';
+        canvas.parentElement?.append(p);
+      }
+      return;
+    }
+    // restaura canvas se antes estava oculto
+    canvas.style.display = '';
+    canvas.parentElement?.querySelector('.rpe-empty')?.remove();
     const colors = ['#e94560', '#ff6b81', '#22c55e', '#f59e0b', '#3b82f6', '#a855f7', '#06b6d4', '#ec4899'];
     getOrCreateChart('rpeChart', {
       type: 'scatter',

@@ -1,61 +1,44 @@
 # Schemas dos JSONs consumidos
 
-Documentação dos campos efetivamente usados pelo dashboard. Atualizado em 2026-08-03 a partir de uma inspeção direta de `data/WorkoutSession.json` e `data/CoachWorkout.json`.
+Documentação dos campos efetivamente usados pelo dashboard. Atualizado
+em 2026-08-04 após auditoria completa do código + dados reais.
 
-> ⚠️ Apenas **2 dos 24 arquivos** em `data/` são consumidos pelo `index.html`. Os outros 22 estão listados em [Órfãos](#orfãos) com sugestão de uso ou descarte.
+> **Resumo:** 4 JSONs ativos consumidos em `js/`. Outros 20 listados em
+> [Órfãos](#orfãos).
 
 ---
 
-## `WorkoutSession.json` ✅ consumido
+## `WorkoutSession.json` ✅ consumido (PRINCIPAL)
 
-Array de **139 sessões**. Cada sessão:
+Array de **140 sessões** (todas com `endDate`). Cada sessão:
 
 ```jsonc
 {
   "id": "uuid",
-  "name": "Treino A",                      // Nome legível
-  "startDate": "2026-07-15T18:30:00Z",     // ISO 8601 UTC
-  "endDate":   "2026-07-15T19:42:00Z",     // usado em F2 (duração)
+  "name": "Treino A",
+  "startDate": "2026-07-15T18:30:00Z",     // ISO 8601 UTC — ancoragem temporal
+  "endDate":   "2026-07-15T19:42:00Z",     // usado para `durationMin`
   "isComplete": true,
-  "workoutSessionExercises": [             // ⚠️ não é "exercises"
+  "workoutSessionExercises": [
     {
-      "id": "uuid",
-      "position": 0,
-      "type": "weighted",                   // ou "warmup", etc.
-      "supersetExercises": [],
-      "exercise": {                         // metadados embutidos por exercício
-        "id": "uuid",
+      "exercise": {
         "name": "Puxada Frontal",
-        "category": "weight_and_reps",
-        "custom": false,
-        "deleted": false,
         "equipment": "Cable Machine",
-        "equipmentRequired": [{ "id":"...", "name":"...", "thumbnailUrl":"..." }],
-        "experienceLevel": 1,
-        "mechanicsType": "compound",
-        "instructions": "...",
         "primaryMuscleGroups":   [{ "id":"...", "name":"..." }],
-        "secondaryMuscleGroups": [{ "id":"...", "name":"..." }],
-        "emphasizedRegions":     [{ "id":"...", "name":"..." }],
-        "thumbnailUrl":          "https://d3r2akiggou3b8.cloudfront.net/.../320.png",
-        "standardResolutionUrl": "https://...",
-        "rating": 4.5
+        "secondaryMuscleGroups": [{ "id":"...", "name":"..." }]
       },
-      "workoutSessionSets": [               // ⚠️ não é "sets"
+      "workoutSessionSets": [
         {
-          "id": "uuid",
-          "set": 1,                         // número da série na sessão
+          "set": 1,
           "warmUp": false,
           "dropSet": false,
-          "untilFailure": false,
           "isComplete": true,
-          "weight": 30.0,                   // float, em kg (ver measurementUnit)
-          "reps": 12,                       // int
-          "minReps": 8,                     // range planejado
+          "weight": 30.0,        // kg (ver measurementUnit)
+          "reps": 12,
+          "minReps": 8,
           "maxReps": 12,
-          "measurementUnit": "kg",
-          "restTime": 60,                   // segundos
-          "oneRepMax": 43.215214            // calculado pelo app de origem
+          "restTime": 60,        // segundos
+          "oneRepMax": 43.215214 // calculado pelo app de origem (Epley)
         }
       ]
     }
@@ -63,104 +46,155 @@ Array de **139 sessões**. Cada sessão:
 }
 ```
 
-### Campos usados pelo `index.html` atual
+### Campos consumidos por `js/`
 
-| Campo | Onde aparece |
-|-------|--------------|
-| `startDate` | filtro/ordenação, monthlyVolume, weekdayCounts, PRs, exerciseProgress |
-| `name` | sessionsTable, dropdown do coach |
-| `workoutSessionExercises[].exercise.name` | todos os charts e dropdowns |
-| `workoutSessionExercises[].exercise.primaryMuscleGroups` | filtro "grupo muscular" |
-| `workoutSessionExercises[].workoutSessionSets[].weight` | volumeChart, KPIs, PRs |
-| `workoutSessionExercises[].workoutSessionSets[].reps` | volumeChart (`weight * reps`) |
-| `workoutSessionExercises[].workoutSessionSets[].oneRepMax` | oneRmChart, exerciseProgressChart |
+| Campo                                                    | Onde aparece                                |
+|----------------------------------------------------------|----------------------------------------------|
+| `id`, `name`, `startDate`, `endDate`                     | `data.js:normalizeSession`                  |
+| `workoutSessionExercises[].exercise.name`                | charts, dropdowns, PRs                      |
+| `workoutSessionExercises[].exercise.primaryMuscleGroups` | (futuro) filtro de grupo                    |
+| `workoutSessionSets[].weight`, `.reps`                  | volume (`weight × reps`), KPIs              |
+| `workoutSessionSets[].oneRepMax`                         | PRs, scatter RPE                            |
+| `workoutSessionSets[].restTime`                          | `totalRestSec` (ainda não exibido)          |
+| `workoutSessionSets[].isComplete`                        | filtro obrigatório para qualquer cálculo    |
 
-### Campos disponíveis ainda **não usados** (oportunidades)
+### Cálculos derivados (em `data.js`)
 
-| Campo | Possível uso |
-|-------|--------------|
-| `endDate` | F2 — duração de sessão, histograma, KPI "duração média" |
-| `workoutSessionSets[].restTime` | F2 — densidade, "tonelagem/minuto" |
-| `workoutSessionSets[].oneRepMax` × `weight` | F1 — gráfico de intensidade relativa (%1RM) |
-| `exercise.equipment` | U1 — filtro por equipamento |
-| `exercise.thumbnailUrl` | U4/F2 — ícones nos cards |
-| `exercise.standardResolutionUrl` | U4 — lightbox no drill-down |
-| `workoutSessionSets[].dropSet` / `warmUp` | F2 — separar volume efetivo de aquecimento |
-| `exercise.instructions` | U3 — drill-down do exercício |
+- **Volume sessão** = Σ `weight × reps` para `isComplete: true`
+- **PR por exercício** = maior `pickOneRepMax(set)` histórico
+- **`pickOneRepMax(set)`** = `set.oneRepMax` se > 0; senão Epley
+- **Δ período** = `(current - previous) / previous × 100`, arredondado.
+  Retorna `null` quando `previous ≤ 0` (sem base).
 
 ---
 
-## `CoachWorkout.json` ✅ consumido (parcialmente)
+## `WorkoutSessionSet.json` ⚠️ consumido COM RESTRIÇÕES
 
-Array de **100 entradas**. Schema mínimo:
+Array de **3206 sets** com schema:
+
+```jsonc
+{
+  "id": "uuid",
+  "isComplete": true,
+  "weight": 30,
+  "reps": 12,
+  "oneRepMax": 43.21,
+  "maxReps": 12,
+  "minReps": 8,
+  "restTime": 60,
+  "warmUp": false,
+  "dropSet": false,
+  "set": 1,
+  "measurementUnit": "kg",
+  "duration": ..., "expectedDuration": ..., "completedDate": ...,
+  "workoutExerciseSet": "uuid"  // FK para WorkoutExerciseSet
+}
+```
+
+### Limitação crítica
+
+O JSON **não tem campo de data nem nome de exercício** (apenas FKs para
+`WorkoutExerciseSet`). `workoutExerciseSet` aponta para o set *planejado*
+do plano, não para uma sessão específica. Logo, não é possível ancorar
+um set a uma data/treino sem fazer join.
+
+### Estado atual
+
+`js/rpe.js:buildScatterData` detecta se o JSON tem ancoragem temporal
+(`date`/`completedDate`/`exerciseName`). Se não tem, retorna `[]` e a UI
+exibe estado vazio elegante — **nenhum dado inventado**.
+
+Se o export do GymBook/Strong futuramente incluir `completedDate` ou
+`exerciseName` por set, o scatter RPE×%1RM aparece automaticamente.
+
+---
+
+## `CoachWorkout.json` ✅ consumido (ADERÊNCIA)
+
+Array de **100 entradas**:
 
 ```jsonc
 [
   {
     "id": "uuid",
-    "workout": "uuid"          // FK para Workout.json (templates de plano)
+    "workout": {
+      "id": "uuid",
+      "name": "Peito, Costas, Ombros, Bíceps, Tríceps",
+      "exerciseList": [
+        { "exercise": {...}, "workoutExerciseSets": [...] }
+      ]
+    }
   }
 ]
 ```
 
-> ⚠️ O schema é **muito raso**. O dashboard atual consome apenas `id` para listar aderência. Para o **F4 (aderência rica)** descrito no plano, vamos precisar carregar `Workout.json` + `WorkoutExercise.json` + `WorkoutExerciseSet.json` (volume combinado ≈ 4.5 MB) e fazer join por data/semana.
+> Cada `CoachWorkout` representa um template de treino. O schema **não tem
+> chave de data** (sem `scheduledDate`/`weekKey`), então a aderência
+> semanal é calculada **derivada** dos próprios treinos reais
+> (semanas com ≥ meta de treinos = aderência OK). Se o JSON futuramente
+> trouxer `weekKey`, o `js/coach.js` anexa planejado automaticamente.
 
 ---
 
-## Órfãos
+## `Measurement.json` ✅ consumido (CATÁLOGO)
 
-22 arquivos em `data/` que **não são lidos pelo `index.html`**. Decisão recomendada:
+Array de **19 tipos de medida** (Weight, Body Fat %, Neck, etc.):
 
-| Arquivo | Tamanho | Recomendação | Justificativa |
-|---------|---------|--------------|---------------|
-| `Exercise.json` | 797 KB | **Incorporar** | catálogo tem `thumbnailUrl` — habilita U4 (thumbnails nos cards) |
-| `Measurement.json` | 2.3 KB | **Incorporar** | habilita F5 (dashboard de medidas corporais) |
-| `MeasurementLog.json` | 2 B | Aguardar | vazio — popular a partir do app de origem |
-| `MuscleGroup.json` | 2.3 KB | Manter | já presente em `WorkoutSession.exercise.primaryMuscleGroups`, mas pode acelerar lookups por nome |
+```jsonc
+{
+  "id": "uuid",
+  "name": "Weight",
+  "measurementType": "weight",
+  "tracked": true,
+  "custom": false
+}
+```
+
+Catálogo é carregado; `MeasurementLog.json` (logs) está vazio no export,
+então `js/measurements.js:buildTimeline` retorna `[]` e UI mostra
+"Sem medidas registradas ainda".
+
+---
+
+## Órfãos (20 arquivos NÃO consumidos)
+
+| Arquivo | Tamanho | Recomendação | Por quê |
+|---------|---------|--------------|---------|
+| `Exercise.json` | 797 KB | Descartar | `WorkoutSession.exercise` já embute o necessário |
+| `MeasurementLog.json` | 2 B | Aguardar | vazio, popular a partir do app |
+| `MuscleGroup.json` | 2.3 KB | Descartar | inline em `WorkoutSession.exercise.primaryMuscleGroups` |
 | `Equipment.json` | 12 KB | Descartar | substituído por `exercise.equipment` inline |
-| `Bar.json` | 459 B | Descartar | metadata de barra, irrelevante para métricas |
-| `Plate.json` | 1.8 KB | Descartar | inventário de anilhas, irrelevante |
-| `Link.json` | 107 KB | Descartar | cross-references internas do app de origem |
-| `User.json` | 1.8 KB | Descartar | perfil (displayName etc.) — não exibido |
-| `UserPreferences.json` | 1.6 MB | Descartar | prefs do app de origem, sem utilidade |
-| `Workout.json` | 1.9 MB | **Manter (futuro)** | templates de treino — habilita F4 (aderência) |
-| `WorkoutExercise.json` | 2.1 MB | **Manter (futuro)** | join table Workout↔Exercise — habilita F4 |
-| `WorkoutExerciseSet.json` | 491 KB | **Manter (futuro)** | sets planejados — habilita F4 |
-| `Schedule.json` | 1.7 MB | **Manter (futuro)** | cronograma planejado — habilita F4 |
-| `CoachAssessment.json` | 729 KB | **Manter (futuro)** | avaliações do coach — habilitaria analytics |
-| `CoachWeek.json` | 1.5 MB | **Manter (futuro)** | plano semanal do coach — habilita F4 |
-| `ExerciseNotes.json` | 2.7 KB | **Incorporar (futuro)** | notas por exercício — habilita tooltip em U4 |
+| `Bar.json` | 459 B | Descartar | metadata de barra, irrelevante |
+| `Plate.json` | 1.8 KB | Descartar | inventário de anilhas |
+| `Link.json` | 107 KB | Descartar | cross-refs internas do app |
+| `User.json` | 1.8 KB | Descartar | perfil, não exibido |
+| `UserPreferences.json` | 1.6 MB | Descartar | prefs sem utilidade |
+| `Workout.json` | 1.9 MB | Descartar | templates, sem date/anchor |
+| `WorkoutExercise.json` | 2.1 MB | Descartar | join sem uso |
+| `WorkoutExerciseSet.json` | 491 KB | Descartar | sets planejados |
+| `Schedule.json` | 1.7 MB | Descartar | cronograma sem ancoragem |
+| `CoachAssessment.json` | 729 KB | Descartar | sem date/anchor |
+| `CoachWeek.json` | 1.5 MB | Descartar | sem ancoragem |
+| `ExerciseNotes.json` | 2.7 KB | Descartar | sem date |
 | `Reminder.json` | 2 B | Aguardar | vazio |
 | `StatisticsExercise.json` | 2 B | Aguardar | vazio |
-| `WorkoutSessionExercise.json` | 3.1 MB | **Manter (futuro)** | drill-down de cada exercício na sessão (U3) |
-| `WorkoutSessionSet.json` | 1.0 MB | **Manter (futuro)** | habilita F1 (RPE) e F2 (densidade) |
+| `WorkoutSessionExercise.json` | 3.1 MB | Descartar | redundante com `WorkoutSession.workoutSessionExercises` |
 
-**Resumo:**
-- **Incorporar agora**: `Exercise.json`, `Measurement.json`
-- **Guardar para Fase 4**: `WorkoutSessionSet.json`, `WorkoutSessionExercise.json`, todos os `Workout*.json`, `Coach*`, `Schedule.json`, `ExerciseNotes.json`
-- **Descartar com segurança**: `Equipment.json`, `Bar.json`, `Plate.json`, `Link.json`, `User.json`, `UserPreferences.json`
-- **Aguardar popular**: `MeasurementLog.json`, `Reminder.json`, `StatisticsExercise.json`
+> **Resumo**: 0 incorporar agora, 3 aguardar popular, 17 descartar.
 
 ---
 
 ## Validação programática
 
-Planejado para Fase 0 → Fase 2 (refatoração em ES modules):
-
-```js
-// scripts/validate-data.js (Node, sem deps)
-import { readFileSync } from 'node:fs';
-
-const ws = JSON.parse(readFileSync('data/WorkoutSession.json', 'utf8'));
-if (!Array.isArray(ws)) throw new Error('WorkoutSession.json deve ser array');
-for (const s of ws) {
-  if (!s.id || !s.startDate) throw new Error(`Sessão sem id/startDate: ${JSON.stringify(s).slice(0,80)}`);
-  for (const ex of s.workoutSessionExercises ?? []) {
-    if (!ex.exercise?.name) throw new Error(`Exercise sem name: ${ex.id}`);
-    for (const set of ex.workoutSessionSets ?? []) {
-      if (typeof set.weight !== 'number') throw new Error(`Set weight inválido: ${JSON.stringify(set).slice(0,80)}`);
-    }
-  }
-}
-console.log(`OK: ${ws.length} sessões validadas`);
+```bash
+npm run validate  # roda scripts/validate-data.js
 ```
+
+Valida:
+- Cada arquivo parseável como JSON
+- `WorkoutSession.json` é array
+- Cada sessão tem `id` + `startDate`
+- Cada exercício tem `exercise.name`
+- Cada set completo tem `weight` numérico
+
+Saída: contagem de sessões + lista de exercícios + exercícios únicos.

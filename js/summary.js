@@ -15,8 +15,15 @@ window.Summary = (function () {
 
     const pct = vol.deltaPct;
     const curFreq = adh.weeklyFreq.toFixed(1);
-    const prevFreq = prevAdh.previous.toFixed(1);
-    const freqDelta = Math.abs((adh.weeklyFreq - prevAdh.previous).toFixed(1));
+    const prevFreq = Number.isFinite(prevAdh.previous) ? prevAdh.previous.toFixed(1) : '0.0';
+    const freqDelta = Number.isFinite(prevAdh.previous)
+      ? Math.abs((adh.weeklyFreq - prevAdh.previous).toFixed(1))
+      : '0.0';
+
+    // Sem base comparativa (previous=0) → texto neutro
+    if (!vol.hasBase || !prevAdh.hasBase) {
+      return window.I18N.t('summary.flat');
+    }
 
     const isUp = pct > 0;
     const isDown = pct < 0;

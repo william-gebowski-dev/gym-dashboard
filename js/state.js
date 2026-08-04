@@ -26,10 +26,13 @@ window.State = (function () {
   };
 
   function applyRange(sessions, range) {
-    if (!range.from && !range.to) return sessions;
-    const from = range.from ? new Date(range.from) : null;
-    const to = range.to ? new Date(range.to + 'T23:59:59') : null;
+    // delega para Data.applyRangeFilter (UTC, imutável, null-safe)
+    if (window.Data && window.Data.applyRangeFilter) return window.Data.applyRangeFilter(sessions, range);
+    if (!range || (!range.from && !range.to)) return sessions ?? [];
+    const from = range.from ? new Date(range.from + 'T00:00:00Z') : null;
+    const to = range.to ? new Date(range.to + 'T23:59:59.999Z') : null;
     return sessions.filter(s => {
+      if (!s.date || isNaN(s.date)) return false;
       if (from && s.date < from) return false;
       if (to && s.date > to) return false;
       return true;
@@ -55,7 +58,7 @@ window.State = (function () {
       url.searchParams.set('from', range.from);
       url.searchParams.set('to', range.to);
     } else if (range.from) {
-      const days = Math.round((Date.now() - new Date(range.from)) / 86_400_000);
+      const days = Math.max(0, Math.round((Date.now() - new Date(range.from)) / 86_400_000));
       url.searchParams.set('days', String(days));
     }
     window.history.replaceState({}, '', url);
@@ -63,7 +66,7 @@ window.State = (function () {
 
   function daysAgoISO(n) {
     const d = new Date();
-    d.setDate(d.getDate() - n);
+    d.setUTCDate(d.getUTCDate() - n);
     return d.toISOString().slice(0, 10);
   }
 

@@ -13,6 +13,24 @@
   <title>Evolução — Gym Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
+    /* a11y: skip-link oculto até foco */
+    .skip-link {
+      position: absolute; left: -9999px; top: 0;
+      background: #e94560; color: #fff;
+      padding: 12px 16px; border-radius: 8px;
+      font-weight: 600; z-index: 9999;
+    }
+    .skip-link:focus { left: 12px; top: 12px; outline: 3px solid #ffd166; }
+    /* a11y: foco visível consistente */
+    :focus-visible {
+      outline: 3px solid #e94560;
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+    /* a11y: respeita prefers-reduced-motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
     :root {
       --bg: #0f0f0f;
       --card: #1a1a2e;
@@ -550,8 +568,9 @@ h1{font-size:1.25rem}
 </style>
 </head>
 <body>
+  <a class="skip-link" href="#main">Pular para o conteúdo</a>
   <div class="wrap">
-    <header class="hero">
+    <header class="hero" role="banner">
       <div class="hero-top">
         <h1 id="appTitle">Evolução de William</h1>
         <div class="hero-actions">
@@ -568,12 +587,13 @@ h1{font-size:1.25rem}
       <div id="summarySlot" class="summary-slot"></div>
     </header>
 
-    <nav class="tabs-nav">
-      <button data-tab="overview" class="active">Visão Geral</button>
-      <button data-tab="strength">Força</button>
-      <button data-tab="consistency">Consistência</button>
-      <button data-tab="history">Histórico</button>
+    <nav class="tabs-nav" aria-label="Abas principais">
+      <button data-tab="overview" class="active" aria-selected="true">Visão Geral</button>
+      <button data-tab="strength" aria-selected="false">Força</button>
+      <button data-tab="consistency" aria-selected="false">Consistência</button>
+      <button data-tab="history" aria-selected="false">Histórico</button>
     </nav>
+    <main id="main">
 
     <section class="tab-panel" data-tab="overview" id="tab-overview">
       <section class="kpis" id="kpis"></section>
@@ -656,6 +676,7 @@ h1{font-size:1.25rem}
         <div id="measurementsEmpty" class="modal-hint" hidden>Sem medidas registradas ainda.</div>
       </section>
     </section>
+    </main>
   </div>
 
   <!--
