@@ -7,7 +7,9 @@
  * - loadAndAggregate(): fetch Work JSON com memo por lastModified
  * - normalizeSession(s): shape → {id, name, date, durationMin, sets, volume, totalRestSec}
  * - computePRs(rawSessions): top 12 PRs com histórico
- * - computeStreak(sessions): {current, record, lastGap}
+ * - computePeriodDelta(sessions, range, field, agg): {current, previous, deltaPct}
+ * - computeWeeklyAdherence(sessions, goal): {currentStreak, longestStreak, totalWeeks, weeksHit, weeklyFreq}
+ * - classifyPRs(prs): {new, evolving, stagnant}
  */
 window.Data = (function () {
   const aggregateCache = new Map();
@@ -176,34 +178,5 @@ window.Data = (function () {
     return { new: newPRs, evolving, stagnant };
   }
 
-  function computeStreak(allSessions) {
-    const dates = [...new Set(allSessions.map(s => s.date.toISOString().slice(0, 10)))].sort();
-    if (dates.length === 0) return { current: 0, record: 0, lastGap: null };
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    let current = 0;
-    let cursor = new Date(dates.at(-1));
-    while (dates.includes(cursor.toISOString().slice(0, 10))) {
-      current++;
-      cursor.setDate(cursor.getDate() - 1);
-    }
-
-    let record = 0;
-    let run = 0;
-    let prev = null;
-    for (const d of dates) {
-      const day = new Date(d);
-      if (prev && (day - prev) / 86_400_000 === 1) run++;
-      else run = 1;
-      record = Math.max(record, run);
-      prev = day;
-    }
-
-    const lastDate = new Date(dates.at(-1));
-    const lastGap = Math.floor((today - lastDate) / 86_400_000);
-    return { current, record, lastGap };
-  }
-
-  return { loadAndAggregate, normalizeSession, computePRs, computeStreak, computePeriodDelta, computeWeeklyAdherence, classifyPRs };
+  return { loadAndAggregate, normalizeSession, computePRs, computePeriodDelta, computeWeeklyAdherence, classifyPRs };
 })();

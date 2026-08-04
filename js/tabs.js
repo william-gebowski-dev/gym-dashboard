@@ -5,7 +5,6 @@
  */
 window.Tabs = (function () {
   const { App } = window.State;
-  const { t } = window.I18N;
 
   function init() {
     const nav = document.querySelector('.tabs-nav');
@@ -30,5 +29,5 @@ window.Tabs = (function () {
     document.dispatchEvent(new CustomEvent('gym:tabchange', { detail: { tab: name } }));
   }
 
-  return { init, switch: switchTo, t };
+  return { init, switch: switchTo };
 })();

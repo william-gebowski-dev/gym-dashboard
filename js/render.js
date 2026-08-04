@@ -9,7 +9,7 @@ window.Render = (function () {
   const { App, applyRange } = window.State;
   const { kpiCard, spanText, prCard, prBadge, sessionCard, openSessionModal } = window.UI;
   const { getOrCreateChart, destroySparklines } = window.Charts;
-  const { computePRs, computeStreak, computePeriodDelta, computeWeeklyAdherence, classifyPRs } = window.Data;
+  const { computePRs, computePeriodDelta, computeWeeklyAdherence, classifyPRs } = window.Data;
   const { t } = window.I18N;
 
   function renderKPIs(sessions) {
