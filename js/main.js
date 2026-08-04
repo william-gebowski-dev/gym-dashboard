@@ -40,6 +40,7 @@ window.Main = (function () {
 
   async function main() {
     App.range = parseRangeFromURL();
+    App.tab = window.State.parseTabFromURL();
     renderHero();
 
     if (location.protocol === 'file:') {

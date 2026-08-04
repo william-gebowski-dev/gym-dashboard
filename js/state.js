@@ -63,5 +63,18 @@ window.State = (function () {
     return d.toISOString().slice(0, 10);
   }
 
-  return { App, applyRange, parseRangeFromURL, syncRangeToURL, daysAgoISO };
+  function parseTabFromURL() {
+    const tab = new URLSearchParams(location.search).get('tab');
+    return ['overview', 'strength', 'consistency', 'history'].includes(tab) ? tab : 'overview';
+  }
+
+  function syncTabToURL(name) {
+    const url = new URL(location.href);
+    if (url.searchParams.get('tab') === name) return;
+    if (name === 'overview') url.searchParams.delete('tab');
+    else url.searchParams.set('tab', name);
+    history.replaceState({}, '', url);
+  }
+
+  return { App, applyRange, parseRangeFromURL, syncRangeToURL, daysAgoISO, parseTabFromURL, syncTabToURL };
 })();

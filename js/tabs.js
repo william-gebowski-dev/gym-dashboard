@@ -25,7 +25,8 @@ window.Tabs = (function () {
     document.querySelectorAll('.tabs-nav button[data-tab]').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.tab === name);
     });
-    if (window.App) window.App.tab = name;
+    App.tab = name;
+    if (window.State && window.State.syncTabToURL) window.State.syncTabToURL(name);
     document.dispatchEvent(new CustomEvent('gym:tabchange', { detail: { tab: name } }));
   }
 
