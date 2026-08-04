@@ -16,6 +16,9 @@ window.State = (function () {
     sourceSig: '',
     range: { from: null, to: null, label: 'all' },
     charts: {},
+    tab: 'overview',
+    weeklyGoal: 4,
+    loadedAt: null,
   };
 
   function applyRange(sessions, range) {
