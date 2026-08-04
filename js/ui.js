@@ -93,6 +93,9 @@ window.UI = (function () {
     const overlay = document.createElement('div');
     overlay.id = 'sessionModal';
     overlay.className = 'modal-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'sessionModalTitle');
 
     const content = document.createElement('div');
     content.className = 'modal-content';
@@ -101,9 +104,9 @@ window.UI = (function () {
     closeBtn.className = 'modal-close';
     closeBtn.setAttribute('aria-label', 'Fechar');
     closeBtn.textContent = '×';
-    closeBtn.addEventListener('click', () => overlay.remove());
 
     const title = document.createElement('h2');
+    title.id = 'sessionModalTitle';
     title.textContent = session.name || 'Treino';
 
     const dateStr = session.date.toLocaleDateString('pt-BR', {
@@ -132,9 +135,31 @@ window.UI = (function () {
     overlay.append(content);
     document.body.append(overlay);
 
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) overlay.remove();
+    const prevFocus = document.activeElement;
+    closeBtn.focus();
+
+    const onKey = (e) => {
+      if (e.key === 'Escape') overlay.remove();
+    };
+    document.addEventListener('keydown', onKey);
+
+    const cleanup = () => {
+      document.removeEventListener('keydown', onKey);
+      if (prevFocus && prevFocus.focus) prevFocus.focus();
+    };
+
+    const close = () => { overlay.remove(); cleanup(); };
+    closeBtn.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    const observer = new MutationObserver((muts) => {
+      for (const m of muts) {
+        for (const n of m.removedNodes) {
+          if (n === overlay) { cleanup(); observer.disconnect(); return; }
+        }
+      }
     });
+    observer.observe(document.body, { childList: true });
   }
 
   function spanText(text) {
