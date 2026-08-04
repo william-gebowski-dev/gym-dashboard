@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Academia</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f0f0f;
+      --card: #1a1a2e;
+      --accent: #e94560;
+      --accent-2: #ff6b81;
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --radius: 22px;
+      --ease: 0.18s ease;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    
+    .wrap {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 28px 24px;
+    }
+    
+    /* Hero */
+    .hero {
+      background: linear-gradient(135deg, var(--card), #16213e);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: calc(var(--radius) + 8px);
+      padding: 40px;
+      margin-bottom: 32px;
+    }
+    
+    .eyebrow {
+      color: var(--accent-2);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 0.78rem;
+      margin-bottom: 8px;
+    }
+    
+    h1 {
+      font-size: clamp(2rem, 4vw, 4.25rem);
+      font-weight: 700;
+      letter-spacing: -0.05em;
+      margin-bottom: 12px;
+    }
+    
+    .subtitle {
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 760px;
+    }
+    
+    /* KPIs */
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    
+    .kpi {
+      background: rgba(15,15,15,0.35);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: all var(--ease);
+    }
+    
+    .kpi:hover {
+      border-color: rgba(255,255,255,0.16);
+      transform: translateY(-2px);
+    }
+    
+    .kpi .value {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+    }
+    
+    .kpi .label {
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+    
+    /* Charts */
+    .chart-box {
+      background: rgba(15,15,15,0.35);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    
+    .chart-box h2 {
+      font-size: 1.2rem;
+      margin-bottom: 16px;
+    }
+    
+    canvas {
+      width: 100% !important;
+      height: auto !important;
+    }
+    
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.09);
+    }
+    
+    th {
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
+    
+    tr:hover {
+      background: rgba(255,255,255,0.03);
+    }
+    
+    /* Buttons */
+    button {
+      background: linear-gradient(135deg, var(--accent), #b8324b);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 24px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--ease);
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(233,69,96,0.3);
+    }
+    
+    button.secondary {
+      background: #111827;
+    }
+    
+    /* Mobile */
+    @media (max-width: 768px) {
+      .wrap { padding: 16px; }
+      .hero { padding: 24px; }
+      h1 { font-size: 1.8rem; }
+      .kpis { grid-template-columns: 1fr 1fr; }
+    }
+    
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.6s ease forwards;
+    }
+
+    /* Heatmap mensal (U2) */
+    .heatmap {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+      padding: 12px 0;
+    }
+    .heat-month {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .heat-month-label {
+      font-size: 0.75em;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .heat-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+    .heat-cell {
+      aspect-ratio: 1;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.04);
+      min-height: 10px;
+    }
+    .heat-cell[data-level="1"] { background: rgba(233,69,96,0.25); }
+    .heat-cell[data-level="2"] { background: rgba(233,69,96,0.5); }
+    .heat-cell[data-level="3"] { background: rgba(233,69,96,0.75); }
+    .heat-cell[data-level="4"] { background: var(--accent); }
+    .heat-cell[data-level]:not([data-level="0"]) {
+      cursor: help;
+    }
+    .heatmap-legend {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      justify-content: flex-end;
+      margin-top: 12px;
+      font-size: 0.75em;
+      color: var(--muted);
+    }
+    .heatmap-legend .heat-cell {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      min-height: 0;
+      aspect-ratio: auto;
+    }
+
+    /* PR grid com sparkline (U4) */
+    .pr-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .pr-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+    }
+    .pr-name {
+      font-weight: 600;
+      font-size: 0.9em;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .pr-weight {
+      font-size: 1.6em;
+      font-weight: 700;
+      color: var(--accent-2);
+    }
+    .pr-meta {
+      font-size: 0.72em;
+      color: var(--muted);
+      display: flex;
+      gap: 8px;
+    }
+    .pr-sparkline {
+      height: 28px;
+      margin-top: 4px;
+    }
+    .pr-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 0.65em;
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+    .pr-badge.new { background: var(--ok); color: #000; }
+    .pr-badge.stale { background: var(--warn); color: #000; }
+
+    /* Streak card (F3) */
+    #streakCards .kpi .value { font-size: 2em; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero fade-in">
+      <div class="eyebrow">Dashboard Academia</div>
+      <h1>Sua Evolução</h1>
+      <p class="subtitle">Acompanhe seu progresso na academia com dados reais.</p>
+    </header>
+    
+    <section class="kpis" id="kpis">
+      <!-- KPIs serão preenchidos via JS -->
+    </section>
+    
+    <section class="chart-box fade-in">
+      <h2>Volume Mensal</h2>
+      <canvas id="volumeChart"></canvas>
+    </section>
+    
+    <section class="chart-box fade-in">
+      <h2>Top 10 Exercícios por 1RM</h2>
+      <canvas id="oneRmChart"></canvas>
+    </section>
+    
+    <section class="chart-box fade-in">
+      <h2>Frequência Semanal</h2>
+      <canvas id="weekdayChart"></canvas>
+    </section>
+
+    <section class="chart-box fade-in">
+      <h2>🔥 Streak &amp; Consistência</h2>
+      <div id="streakCards" class="kpis"></div>
+    </section>
+
+    <section class="chart-box fade-in">
+      <h2>📅 Volume Diário (Heatmap Mensal)</h2>
+      <div id="heatmap" class="heatmap"></div>
+      <p class="heatmap-legend">
+        <span>Menos</span>
+        <span class="heat-cell" data-level="0"></span>
+        <span class="heat-cell" data-level="1"></span>
+        <span class="heat-cell" data-level="2"></span>
+        <span class="heat-cell" data-level="3"></span>
+        <span class="heat-cell" data-level="4"></span>
+        <span>Mais</span>
+      </p>
+    </section>
+
+    <section class="chart-box fade-in">
+      <h2>🏆 Personal Records (com evolução)</h2>
+      <div id="prGrid" class="pr-grid"></div>
+    </section>
+
+    <section class="chart-box fade-in">
+      <h2>Últimas Sessões</h2>
+      <table id="sessionsTable">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Nome</th>
+            <th>Exercícios</th>
+            <th>Séries</th>
+            <th>Volume</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </div>
+  
+  <!--
+    Chart.js 4.4.7 via cdn.jsdelivr.net.
+    Preencha o SRI abaixo para garantir integridade contra comprometimento do CDN.
+    Como obter:
+      curl -s https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js | \
+        openssl dgst -sha384 -binary | openssl base64 -A
+    Em seguida, cole o hash em integrity="sha384-...".
+  -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous"></script>
+  <!-- Módulos (namespaces globais, ordem importa) -->
+  <script defer src="js/state.js"></script>
+  <script defer src="js/data.js"></script>
+  <script defer src="js/charts.js"></script>
+  <script defer src="js/ui.js"></script>
+  <script defer src="js/render.js"></script>
+  <script defer src="js/drop.js"></script>
+  <script defer src="js/main.js"></script>
+</body>
+</html>
