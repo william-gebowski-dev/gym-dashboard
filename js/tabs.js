@@ -1,0 +1,33 @@
+/**
+ * js/tabs.js — Navegação por abas
+ *
+ * Namespace: window.Tabs
+ */
+window.Tabs = (function () {
+  const { App } = window.State;
+  const { t } = window.I18N;
+
+  function init() {
+    const nav = document.querySelector('.tabs-nav');
+    if (!nav) return;
+    nav.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-tab]');
+      if (!btn) return;
+      switchTo(btn.dataset.tab);
+    });
+    switchTo(App.tab || 'overview');
+  }
+
+  function switchTo(name) {
+    document.querySelectorAll('.tab-panel').forEach((panel) => {
+      panel.hidden = panel.dataset.tab !== name;
+    });
+    document.querySelectorAll('.tabs-nav button[data-tab]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.tab === name);
+    });
+    if (window.App) window.App.tab = name;
+    document.dispatchEvent(new CustomEvent('gym:tabchange', { detail: { tab: name } }));
+  }
+
+  return { init, switch: switchTo, t };
+})();
