@@ -470,15 +470,21 @@ window.Render = (function () {
 
   function renderRPEChart() {
     const canvas = document.getElementById('rpeChart');
-    if (!canvas || !window.RPE || !App.rpeSets) return;
-    const data = window.RPE.buildScatterData(App.rpeSets, App.rawSessions);
-    if (!data.length) {
-      canvas.replaceWith(Object.assign(document.createElement('p'), {
-        className: 'modal-hint',
-        textContent: 'Sem dados de RPE suficientes.',
-      }));
+    if (!canvas || !window.RPE) return;
+    if (!App.rpeSets) return;
+    if (App.rpeSets.length === 0) {
+      const hint = canvas.parentElement?.querySelector('.rpe-empty');
+      if (!hint) {
+        const p = document.createElement('p');
+        p.className = 'modal-hint rpe-empty';
+        p.textContent = 'Sem dados suficientes para plotar.';
+        canvas.style.display = 'none';
+        canvas.parentElement?.append(p);
+      }
       return;
     }
+    const data = window.RPE.buildScatterData(App.rpeSets, App.rawSessions);
+    if (!data.length) return;
     const colors = ['#e94560', '#ff6b81', '#22c55e', '#f59e0b', '#3b82f6', '#a855f7', '#06b6d4', '#ec4899'];
     getOrCreateChart('rpeChart', {
       type: 'scatter',
@@ -543,10 +549,11 @@ window.Render = (function () {
       fill.className = 'coach-bar-fill';
       if (r.adherencePct === null) {
         fill.style.width = `${Math.min(100, (r.completed / 4) * 100)}%`;
-        fill.classList.add(r.completed >= 4 ? 'high' : '');
+        if (r.completed >= 4) fill.classList.add('high');
       } else {
         fill.style.width = `${r.adherencePct}%`;
-        fill.classList.add(r.adherencePct >= 80 ? 'high' : r.adherencePct < 50 ? 'low' : '');
+        if (r.adherencePct >= 80) fill.classList.add('high');
+        else if (r.adherencePct < 50) fill.classList.add('low');
       }
       barWrap.append(fill);
       const pct = document.createElement('div');
@@ -672,6 +679,7 @@ window.Render = (function () {
     renderAdherence(filtered);
     renderHeatmap(filtered);
     renderPRs();
+    lazyChart('tab-strength', 'oneRmChart', () => renderOneRmChart(filtered));
     lazyChart('tab-strength', 'rpeChart', () => renderRPEChart());
     renderCoachAdherence();
     lazyChart('tab-history', 'measurementsChart', () => renderMeasurementsChart());

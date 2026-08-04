@@ -25,25 +25,26 @@ window.RPE = (function () {
 
   function buildScatterData(sets, sessions) {
     const sessionById = new Map();
-    for (const s of sessions) {
+    for (const s of sessions ?? []) {
       const raw = s.rawSession ?? s;
       if (raw?.id) sessionById.set(raw.id, raw);
     }
 
     const byExercise = new Map();
-    for (const set of sets) {
+    for (const set of sets ?? []) {
       if (!set.isComplete) continue;
-      if (typeof set.rpe !== 'number' || typeof set.oneRepMax !== 'number') continue;
-      if (!set.oneRepMax || set.oneRepMax <= 0) continue;
-      const sessionId = set.workoutSessionExercise?.workoutSessionId;
-      const session = sessionById.get(sessionId);
-      const date = session?.startDate ? new Date(session.startDate) : null;
-      const exName = set.workoutSessionExercise?.exercise?.name || 'Exercício';
+      if (typeof set.oneRepMax !== 'number' || set.oneRepMax <= 0) continue;
+      const dateField = set.date ?? set.workoutDate;
+      const date = dateField ? new Date(dateField) : null;
+      const exName = set.exerciseName || set.workoutSessionExercise?.exercise?.name || 'Exercício';
+      // Estimar RPE via reps vs maxReps (proxy: reps/maxReps)
+      const maxR = set.maxReps ?? 12;
+      const rpeEstimate = Math.min(10, 6 + (1 - (set.reps / maxR)) * 4);
       const pct = (set.weight / set.oneRepMax) * 100;
       if (!byExercise.has(exName)) byExercise.set(exName, []);
       byExercise.get(exName).push({
         x: pct,
-        y: set.rpe,
+        y: Math.round(rpeEstimate * 10) / 10,
         date,
         weight: set.weight,
         reps: set.reps,
