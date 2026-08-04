@@ -39,13 +39,6 @@ window.Render = (function () {
       kpiCard(adh.weeklyFreq.toFixed(1), t('kpi.weeklyFreq'), buildDelta(prevAdh)),
       kpiCard(String(newPRs), t('kpi.newPRs'), null),
     );
-
-    const updatedLast = document.getElementById('lastWorkout');
-    if (updatedLast) {
-      updatedLast.textContent = lastDate
-        ? `${t('header.lastWorkout')}: ${lastDate.toLocaleDateString('pt-BR')}`
-        : '';
-    }
   }
 
   function renderAdherence(sessions) {
