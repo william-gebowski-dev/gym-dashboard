@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self';
       script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline';
@@ -23,8 +23,9 @@
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#main">Pular para o conteúdo</a>
   <div class="wrap">
-    <header class="hero">
+    <header class="hero" role="banner">
       <div class="hero-top">
         <h1 id="appTitle">Evolução de William</h1>
         <div class="hero-actions">
@@ -41,12 +42,13 @@
       <div id="summarySlot" class="summary-slot"></div>
     </header>
 
-    <nav class="tabs-nav">
-      <button data-tab="overview" class="active">Visão Geral</button>
-      <button data-tab="strength">Força</button>
-      <button data-tab="consistency">Consistência</button>
-      <button data-tab="history">Histórico</button>
+    <nav class="tabs-nav" aria-label="Abas principais">
+      <button data-tab="overview" class="active" aria-selected="true">Visão Geral</button>
+      <button data-tab="strength" aria-selected="false">Força</button>
+      <button data-tab="consistency" aria-selected="false">Consistência</button>
+      <button data-tab="history" aria-selected="false">Histórico</button>
     </nav>
+    <main id="main">
 
     <section class="tab-panel" data-tab="overview" id="tab-overview">
       <section class="kpis" id="kpis"></section>
@@ -129,6 +131,7 @@
         <div id="measurementsEmpty" class="modal-hint" hidden>Sem medidas registradas ainda.</div>
       </section>
     </section>
+    </main>
   </div>
 
   <!--

@@ -22,7 +22,10 @@ window.Tabs = (function () {
       panel.hidden = panel.dataset.tab !== name;
     });
     document.querySelectorAll('.tabs-nav button[data-tab]').forEach((btn) => {
-      btn.classList.toggle('active', btn.dataset.tab === name);
+      const isActive = btn.dataset.tab === name;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', String(isActive));
+      btn.setAttribute('tabindex', isActive ? '0' : '-1');
     });
     App.tab = name;
     if (window.State && window.State.syncTabToURL) window.State.syncTabToURL(name);
