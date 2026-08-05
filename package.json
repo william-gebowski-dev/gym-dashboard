@@ -7,7 +7,7 @@
   "scripts": {
     "start": "python3 -m http.server 8000",
     "serve": "python3 -m http.server 8000",
-    "test": "node --test tests/aggregate.test.js tests/pure-fns.test.js",
+    "test": "node --test tests/aggregate.test.js tests/pure-fns.test.js tests/state.test.js tests/ui.test.js",
     "validate": "node scripts/validate-data.js"
   },
   "engines": {

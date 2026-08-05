@@ -6,6 +6,18 @@
 window.Tabs = (function () {
   const { App } = window.State;
 
+  function getTabButtons() {
+    return Array.from(document.querySelectorAll('.tabs-nav button[data-tab]'));
+  }
+
+  function focusTab(idx) {
+    const btns = getTabButtons();
+    if (!btns.length) return;
+    const next = btns[(idx + btns.length) % btns.length];
+    next.focus();
+    switchTo(next.dataset.tab);
+  }
+
   function init() {
     const nav = document.querySelector('.tabs-nav');
     if (!nav) return;
@@ -13,6 +25,15 @@ window.Tabs = (function () {
       const btn = e.target.closest('button[data-tab]');
       if (!btn) return;
       switchTo(btn.dataset.tab);
+    });
+    nav.addEventListener('keydown', (e) => {
+      const btns = getTabButtons();
+      const idx = btns.indexOf(document.activeElement);
+      if (idx === -1) return;
+      if (e.key === 'ArrowRight') { e.preventDefault(); focusTab(idx + 1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); focusTab(idx - 1); }
+      else if (e.key === 'Home') { e.preventDefault(); focusTab(0); }
+      else if (e.key === 'End') { e.preventDefault(); focusTab(btns.length - 1); }
     });
     switchTo(App.tab || 'overview');
   }

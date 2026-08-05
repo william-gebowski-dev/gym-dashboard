@@ -27,7 +27,10 @@
   <div class="wrap">
     <header class="hero" role="banner">
       <div class="hero-top">
-        <h1 id="appTitle">Evolução de William</h1>
+        <div class="hero-heading">
+          <h1 id="appTitle">Evolução de William</h1>
+          <p class="hero-subtitle">Performance, força e consistência baseadas no seu histórico real.</p>
+        </div>
         <div class="hero-actions">
           <button id="exportBtn" class="hero-action" title="Exportar PNG" aria-label="Exportar PNG">📸</button>
           <button id="shareBtn" class="hero-action" title="Copiar link" aria-label="Copiar link">🔗</button>
@@ -42,15 +45,15 @@
       <div id="summarySlot" class="summary-slot"></div>
     </header>
 
-    <nav class="tabs-nav" aria-label="Abas principais">
-      <button data-tab="overview" class="active" aria-selected="true">Visão Geral</button>
-      <button data-tab="strength" aria-selected="false">Força</button>
-      <button data-tab="consistency" aria-selected="false">Consistência</button>
-      <button data-tab="history" aria-selected="false">Histórico</button>
+    <nav class="tabs-nav" role="tablist" aria-label="Abas principais">
+      <button data-tab="overview" id="tab-overview-btn" class="active" role="tab" aria-selected="true" aria-controls="tab-overview" tabindex="0">Visão Geral</button>
+      <button data-tab="strength" id="tab-strength-btn" role="tab" aria-selected="false" aria-controls="tab-strength" tabindex="-1">Força</button>
+      <button data-tab="consistency" id="tab-consistency-btn" role="tab" aria-selected="false" aria-controls="tab-consistency" tabindex="-1">Consistência</button>
+      <button data-tab="history" id="tab-history-btn" role="tab" aria-selected="false" aria-controls="tab-history" tabindex="-1">Histórico</button>
     </nav>
     <main id="main">
 
-    <section class="tab-panel" data-tab="overview" id="tab-overview">
+    <section class="tab-panel" data-tab="overview" id="tab-overview" role="tabpanel" aria-labelledby="tab-overview-btn">
       <section class="kpis" id="kpis"></section>
       <div class="chart-row">
         <div class="chart-box">
@@ -64,7 +67,7 @@
       </div>
     </section>
 
-    <section class="tab-panel" data-tab="strength" hidden id="tab-strength">
+    <section class="tab-panel" data-tab="strength" hidden id="tab-strength" role="tabpanel" aria-labelledby="tab-strength-btn">
       <div class="chart-box">
         <h2>Top 10 por 1RM</h2>
         <canvas id="oneRmChart"></canvas>
@@ -84,7 +87,7 @@
       </section>
     </section>
 
-    <section class="tab-panel" data-tab="consistency" hidden>
+    <section class="tab-panel" data-tab="consistency" hidden id="tab-consistency" role="tabpanel" aria-labelledby="tab-consistency-btn">
       <section class="chart-box">
         <h2>Aderência Semanal</h2>
         <div id="adherenceCards" class="kpis"></div>
@@ -108,7 +111,7 @@
       </section>
     </section>
 
-    <section class="tab-panel" data-tab="history" hidden id="tab-history">
+    <section class="tab-panel" data-tab="history" hidden id="tab-history" role="tabpanel" aria-labelledby="tab-history-btn">
       <section class="chart-box">
         <h2>Últimas Sessões</h2>
         <table id="sessionsTable">
@@ -145,6 +148,9 @@
   <script defer src="js/data.js"></script>
   <script defer src="js/ui.js"></script>
   <script defer src="js/charts.js"></script>
+  <script defer src="js/sections/overview.js"></script>
+  <script defer src="js/sections/strength.js"></script>
+  <script defer src="js/sections/consistency.js"></script>
   <script defer src="js/render.js"></script>
   <script defer src="js/drop.js"></script>
   <script defer src="js/summary.js"></script>

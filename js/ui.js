@@ -4,7 +4,7 @@
  * Namespace: window.UI
  */
 window.UI = (function () {
-  function kpiCard(value, label, delta) {
+  function kpiCard(value, label, delta, sub) {
     const card = document.createElement('div');
     card.className = 'kpi';
     const v = document.createElement('div');
@@ -21,6 +21,12 @@ window.UI = (function () {
       const arrow = direction === 'up' ? '↑' : direction === 'down' ? '↓' : '=';
       d.textContent = `${arrow} ${Math.abs(delta.pct)}% vs período anterior`;
       card.append(d);
+    }
+    if (sub && typeof sub.text === 'string') {
+      const s = document.createElement('div');
+      s.className = `sub ${sub.tone || 'muted'}`;
+      s.textContent = sub.text;
+      card.append(s);
     }
     return card;
   }

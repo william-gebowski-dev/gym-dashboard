@@ -35,7 +35,7 @@ Abra `http://localhost:8000`.
 | Comando             | O que faz                                        |
 |---------------------|--------------------------------------------------|
 | `npm start`         | sobe servidor estático em `:8000`                |
-| `npm test`          | roda testes unitários (57 testes, 0 deps)        |
+| `npm test`          | roda testes unitários (98 testes, 0 deps)        |
 | `npm run validate`  | valida schema dos JSONs em `data/`               |
 
 ## Estrutura
@@ -43,20 +43,27 @@ Abra `http://localhost:8000`.
 ```
 gym-dashboard/
 ├── index.html                # shell HTML semântico (lang, viewport-fit, aria)
+├── css/
+│   └── styles.css            # design system premium
 ├── js/
-│   ├── data.js               # funções puras (normalize, PRs, delta, streak, range)
+│   ├── i18n.js               # strings PT-BR centralizadas
 │   ├── state.js              # App global + URL + localStorage
-│   ├── charts.js             # pool Chart.js
-│   ├── render.js             # KPIs, charts, tabela, modal, drill-down
+│   ├── data.js               # funções puras (normalize, PRs, delta, streak)
+│   ├── ui.js                 # primitivas DOM-safe (kpiCard, modal)
+│   ├── charts.js             # pool Chart.js (lazy via IntersectionObserver)
+│   ├── sections/
+│   │   ├── overview.js       # KPIs + Adherence (aba "overview")
+│   │   ├── strength.js       # charts de Volume/1RM/Weekday + tabela (aba "strength")
+│   │   └── consistency.js    # heatmap diário + cards de PRs (aba "consistency")
+│   ├── render.js             # shims para sections/ + hero, range picker, RPE,
+│   │                         # coach, measurements, comparison, rerender
 │   ├── tabs.js               # navegação por abas (URL sincronizada)
 │   ├── summary.js            # resumo textual determinístico
 │   ├── rpe.js                # scatter RPE×%1RM (estado vazio se dados faltarem)
 │   ├── coach.js              # aderência semanal
 │   ├── measurements.js       # timeline de medidas corporais
 │   ├── export.js             # PNG + share URL
-│   ├── i18n.js               # strings PT-BR centralizadas
 │   ├── drop.js               # fallback drag-and-drop file://
-│   ├── ui.js                 # primitivas DOM-safe (kpiCard, sessionCard, modal)
 │   └── main.js               # entry point
 ├── data/
 │   ├── WorkoutSession.json   # ← consumido (140 sessões)
@@ -65,12 +72,72 @@ gym-dashboard/
 │   ├── WorkoutSessionSet.json # ← consumido para RPE (sem date/exercise)
 │   ├── CoachWorkout.json     # ← consumido parcialmente (aderência)
 │   └── SCHEMAS.md            # schema de cada arquivo + lista de órfãos
-├── tests/                    # node --test (57 testes)
+├── tests/                    # node --test (98 testes, 26 suítes)
+│   ├── pure-fns.test.js      # data.js + bordas
+│   ├── aggregate.test.js     # dados reais + schema
+│   └── state.test.js         # state.js + URL/localStorage
 ├── scripts/validate-data.js  # validador de schema
+├── .github/workflows/ci.yml  # CI: Node 18 + 20, ubuntu
+├── .editorconfig             # indentação 2 espaços, LF
 ├── vercel.json               # cache headers + security headers
 ├── package.json              # scripts npm
+├── CHANGELOG.md              # histórico de mudanças
+├── LICENSE                   # MIT
 └── README.md
 ```
+
+## Arquitetura de módulos
+
+Cada arquivo em `js/` expõe um namespace global em `window`. A ordem de
+carregamento em `index.html` reflete as dependências: primeiro os
+módulos sem dependência (`i18n`, `state`, `data`, `ui`, `charts`), depois
+as seções, depois o `render.js` que atua como shim, e por fim os
+auxiliares (`rpe`, `coach`, `measurements`, etc.) que dependem de
+`App` populado.
+
+### Padrão shim
+
+`render.js` mantém a API pública original (`window.Render.renderKPIs`,
+etc.) mas delega para módulos em `js/sections/`. Isso permite extrair
+seções sem quebrar call sites externos e mantém a possibilidade de
+reverter cada extração de forma independente.
+
+Exemplo:
+
+```js
+// js/render.js
+function renderKPIs(sessions) {
+  return window.Overview.renderKPIs(sessions);
+}
+
+// js/sections/overview.js
+window.Overview = (function () {
+  function renderKPIs(sessions) { /* ... */ }
+  return { renderKPIs };
+})();
+```
+
+### Namespaces
+
+| Namespace      | Responsabilidade                                |
+|----------------|-------------------------------------------------|
+| `Data`         | funções puras (sem DOM): normalize, PRs, delta  |
+| `State`        | estado global + URL + localStorage              |
+| `UI`           | primitivas DOM-safe (kpiCard, modal, etc.)      |
+| `Charts`       | pool Chart.js com lazy loading                  |
+| `I18N`         | strings PT-BR                                   |
+| `Render`       | shims + hero/range/RPE/coach/measurements       |
+| `Overview`     | KPIs + Adherence (aba "overview")               |
+| `Strength`     | Volume/1RM/Weekday charts + tabela (aba "strength") |
+| `Consistency`  | Heatmap + PRs (aba "consistency")               |
+| `Tabs`         | navegação por abas                              |
+| `Summary`      | resumo textual determinístico                   |
+| `RPE`          | scatter RPE×%1RM                                |
+| `Coach`        | aderência semanal                               |
+| `Measurements` | timeline de medidas corporais                   |
+| `Export`       | PNG + share URL                                 |
+| `Drop`         | fallback drag-and-drop file://                  |
+| `Main`         | entry point                                     |
 
 ## Filtros por URL
 
@@ -168,4 +235,4 @@ Configuração em [`vercel.json`](vercel.json): cache headers
 
 ## Licença
 
-MIT — uso pessoal. Os JSONs do app GymBook são de propriedade do usuário.
+[MIT](LICENSE) — uso pessoal. Os JSONs do app GymBook são de propriedade do usuário.

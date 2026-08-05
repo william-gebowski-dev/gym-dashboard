@@ -324,3 +324,198 @@ describe('classifyPRs', () => {
     assert.equal(c.stagnant.length, 2);
   });
 });
+
+/* ─── Borda: funções com cobertura fraca ─────────────────────────── */
+
+describe('computeVolume', () => {
+  it('soma volume de array de sessões', () => {
+    const sess = [
+      { volume: 1000 },
+      { volume: 500 },
+      { volume: 250 },
+    ];
+    assert.equal(D.computeVolume(sess), 1750);
+  });
+  it('aceita sessão única e retorna o próprio volume', () => {
+    assert.equal(D.computeVolume({ volume: 800 }), 800);
+  });
+  it('coage null/undefined/strings para 0', () => {
+    assert.equal(D.computeVolume(null), 0);
+    assert.equal(D.computeVolume({}), 0);
+    assert.equal(D.computeVolume([{ volume: '12.5' }, { volume: null }]), 12.5);
+  });
+  it('array vazio → 0', () => assert.equal(D.computeVolume([]), 0));
+});
+
+describe('startOfWeekUTC — virada de ano ISO', () => {
+  it('semana que cruza ano novo: 2027-01-03 (dom) → segunda 2026-12-28', () => {
+    const sun = new Date(Date.UTC(2027, 0, 3));
+    assert.equal(D.isoDayUTC(D.startOfWeekUTC(sun)), '2026-12-28');
+  });
+  it('segunda 4 de janeiro de 2027 → 2027-01-04', () => {
+    const mon = new Date(Date.UTC(2027, 0, 4));
+    assert.equal(D.isoDayUTC(D.startOfWeekUTC(mon)), '2027-01-04');
+  });
+});
+
+describe('applyRangeFilter — bordas', () => {
+  it('from inválido: nenhuma sessão passa (Invalid Date filtra tudo)', () => {
+    const sess = [{ date: new Date('2026-01-15T00:00:00Z') }];
+    // 'lixo' + 'T00:00:00Z' = Invalid Date. Comparações com NaN são sempre
+    // false, então s.date < InvalidDate é false e s.date > InvalidDate é false
+    // → o único check é `if (!s.date || isNaN(s.date)) return false`, e a data
+    // da sessão é válida. Resultado: passa pelo filtro (data é OK).
+    const r = D.applyRangeFilter(sess, { from: 'lixo', to: null });
+    assert.equal(r.length, 1);
+  });
+  it('to anterior a todas as sessões → []', () => {
+    const sess = [{ date: new Date('2026-01-15T00:00:00Z') }];
+    const r = D.applyRangeFilter(sess, { from: null, to: '1990-01-01' });
+    assert.equal(r.length, 0);
+  });
+  it('sem range: retorna cópia incluindo datas inválidas (comportamento documentado)', () => {
+    // Quando from E to são null, a função faz `return sessions.slice()`
+    // sem filtrar — o filtro de isNaN só roda no caminho "há pelo menos um bound".
+    const sess = [
+      { date: new Date('2026-01-15T00:00:00Z') },
+      { date: new Date('not-a-date') },
+    ];
+    const r = D.applyRangeFilter(sess, { from: null, to: null });
+    assert.equal(r.length, 2);
+  });
+  it('com bound válido: datas inválidas são filtradas', () => {
+    const sess = [
+      { date: new Date('2026-01-15T00:00:00Z') },
+      { date: new Date('not-a-date') },
+    ];
+    const r = D.applyRangeFilter(sess, { from: '2026-01-01', to: '2026-12-31' });
+    assert.equal(r.length, 1);
+  });
+});
+
+describe('normalizeSession — bordas', () => {
+  it('startDate ausente → date = Invalid Date', () => {
+    const r = D.normalizeSession({ id: 'x', name: 'T' });
+    assert.ok(r.date instanceof Date);
+    assert.ok(isNaN(r.date.getTime()));
+  });
+  it('workoutSessionExercises ausente → exercises/sets/volume = 0', () => {
+    const r = D.normalizeSession({ id: 'x', name: 'T', startDate: '2026-01-01T10:00:00Z' });
+    assert.equal(r.exercises, 0);
+    assert.equal(r.sets, 0);
+    assert.equal(r.volume, 0);
+  });
+  it('restTime string é coerced para número', () => {
+    const fake = {
+      id: 'x', name: 'T', startDate: '2026-01-01T10:00:00Z',
+      workoutSessionExercises: [{
+        workoutSessionSets: [
+          { isComplete: true, weight: 50, reps: 10, restTime: '90' },
+        ],
+      }],
+    };
+    assert.equal(D.normalizeSession(fake).totalRestSec, 90);
+  });
+  it('endDate ausente → durationMin = null', () => {
+    const r = D.normalizeSession({ id: 'x', startDate: '2026-01-01T10:00:00Z' });
+    assert.equal(r.durationMin, null);
+  });
+});
+
+describe('computePRs — bordas', () => {
+  it('startDate inválido é pulado', () => {
+    const fake = [{
+      id: 's', startDate: 'lixo',
+      workoutSessionExercises: [{
+        exercise: { name: 'A' },
+        workoutSessionSets: [{ isComplete: true, oneRepMax: 100 }],
+      }],
+    }];
+    assert.equal(D.computePRs(fake).length, 0);
+  });
+  it('exercise.name ausente é pulado', () => {
+    const fake = [{
+      id: 's', startDate: '2026-01-01T00:00:00Z',
+      workoutSessionExercises: [
+        { exercise: {}, workoutSessionSets: [{ isComplete: true, oneRepMax: 100 }] },
+        { exercise: { name: 'B' }, workoutSessionSets: [{ isComplete: true, oneRepMax: 50 }] },
+      ],
+    }];
+    const prs = D.computePRs(fake);
+    assert.equal(prs.length, 1);
+    assert.equal(prs[0].name, 'B');
+  });
+  it('empate em 1RM: o último visto fica como record (estável)', () => {
+    const fake = [{
+      id: 's', startDate: '2026-01-01T00:00:00Z',
+      workoutSessionExercises: [{
+        exercise: { name: 'A' },
+        workoutSessionSets: [
+          { isComplete: true, oneRepMax: 100 },
+          { isComplete: true, oneRepMax: 100 },
+        ],
+      }],
+    }];
+    const prs = D.computePRs(fake);
+    assert.equal(prs.length, 1);
+    assert.equal(prs[0].weight, 100);
+    assert.equal(prs[0].history.length, 2);
+  });
+  it('oneRm = 0 (zero real ou falha) não vira PR', () => {
+    const fake = [{
+      id: 's', startDate: '2026-01-01T00:00:00Z',
+      workoutSessionExercises: [{
+        exercise: { name: 'A' },
+        workoutSessionSets: [
+          { isComplete: true, oneRepMax: 0, weight: 0, reps: 0 },
+        ],
+      }],
+    }];
+    assert.equal(D.computePRs(fake).length, 0);
+  });
+});
+
+describe('computePeriodDelta — borda agg=avg', () => {
+  it('agg=avg calcula média em vez de soma', () => {
+    const fake = [
+      { id: 'a', startDate: '2026-02-10T00:00:00Z', volume: 100, workoutSessionExercises: [] },
+      { id: 'b', startDate: '2026-02-20T00:00:00Z', volume: 200, workoutSessionExercises: [] },
+      { id: 'c', startDate: '2026-03-10T00:00:00Z', volume: 600, workoutSessionExercises: [] },
+    ];
+    const sess = fake.map(f => ({ ...D.normalizeSession(f), volume: f.volume }));
+    const r = D.computePeriodDelta(sess, { from: '2026-03-01', to: '2026-03-31' }, 'volume', 'avg');
+    // current = 600/1 = 600; previous = (100+200)/2 = 150; delta = 300%
+    assert.equal(r.current, 600);
+    assert.equal(r.previous, 150);
+    assert.equal(r.deltaPct, 300);
+  });
+});
+
+describe('computeWeeklyAdherence — bordas', () => {
+  it('inProgressWeek=true quando semana corrente tem < goal', () => {
+    const sess = [];
+    for (let i = 0; i < 2; i++) {
+      sess.push({ date: new Date(), volume: 0, sets: 0, exercises: 0 });
+    }
+    const r = D.computeWeeklyAdherence(sess, 4);
+    assert.equal(r.inProgressWeek, true);
+    assert.equal(r.currentStreak, 0);
+  });
+  it('inProgressWeek=false quando semana corrente já bateu meta', () => {
+    const sess = [];
+    for (let i = 0; i < 5; i++) {
+      sess.push({ date: new Date(), volume: 0, sets: 0, exercises: 0 });
+    }
+    const r = D.computeWeeklyAdherence(sess, 4);
+    assert.equal(r.inProgressWeek, false);
+  });
+  it('longestStreak conta sequência intercalada', () => {
+    // Semanas -3, -2: 4 sessões (meta=4). Semana -1: 2 sessões. Streak=2.
+    const sess = [];
+    for (const weeksAgo of [3, 3, 3, 3, 2, 2, 2, 2, 1, 1]) {
+      sess.push({ date: new Date(Date.now() - weeksAgo * 7 * 86_400_000), volume: 0, sets: 0, exercises: 0 });
+    }
+    const r = D.computeWeeklyAdherence(sess, 4);
+    assert.equal(r.longestStreak, 2);
+  });
+});
