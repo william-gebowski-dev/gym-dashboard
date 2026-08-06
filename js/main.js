@@ -57,6 +57,9 @@ window.Main = (function () {
       App.sourceSig = sig;
       updateTimestamps(sessions);
       renderSummary(sessions);
+      // A tira usa o histórico completo de propósito: o filtro de período muda
+      // a análise, não muda se você apareceu na segunda-feira passada.
+      window.Streak?.render(sessions);
       rerender();
       window.Tabs.init();
 

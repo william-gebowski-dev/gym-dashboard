@@ -191,7 +191,74 @@ html { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
   font-weight: 500;
 }
 .hero-meta .dot { width: 3px; height: 3px; border-radius: 999px; background: var(--muted); }
-.hero-period { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 4px; }
+.hero-period { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+/* Linha de estado: substitui o subtítulo genérico por um fato do próprio
+   histórico. Um subtítulo que serviria para qualquer dashboard não informa. */
+.hero-status {
+  margin: 10px 0 0;
+  color: var(--text-soft);
+  font-size: clamp(0.95rem, 1.6vw, 1.12rem);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* Corpo da hero: controles à esquerda, tira à direita — a coluna direita
+   estava vazia e o elemento-assinatura merece o espaço. */
+.hero-body {
+  display: grid;
+  align-items: start;
+  gap: 22px 32px;
+  margin-top: 20px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.hero-controls { display: flex; min-width: 0; flex-direction: column; gap: 14px; }
+
+/* Tira de 12 semanas — o elemento-assinatura.
+   Escala absoluta: um dia é treinado ou não é. Sem gradação de volume aqui,
+   porque a pergunta desta dobra é presença, não intensidade. */
+.streak { min-width: 0; }
+.streak-months {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 17px;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 620;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.streak-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 14px);
+  gap: 3px;
+  width: max-content;
+  max-width: 100%;
+}
+.streak-day {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.streak-day[data-on] {
+  background: var(--accent);
+  cursor: pointer;
+  transition: transform var(--transition), filter var(--transition);
+}
+.streak-day[data-on]:hover { transform: scale(1.3); filter: brightness(1.15); }
+.streak-caption {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 620;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 
 .range-picker {
   display: flex;
@@ -222,7 +289,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
   box-shadow: 0 6px 16px rgba(239, 61, 87, 0.2);
 }
 
-.summary-slot { margin-top: 18px; }
+.summary-slot { min-width: 0; }
 .summary-card {
   padding: 14px 16px;
   border: 1px solid rgba(239, 61, 87, 0.17);
@@ -289,52 +356,54 @@ html { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
   gap: 12px;
   margin-bottom: 17px;
 }
+/* O número é o conteúdo, então ele é a coisa maior do card — e o rótulo vira
+   micro-tipo em caixa alta. É esse contraste de escala que carrega o caráter
+   da página; sem ele, valor e rótulo competem no mesmo peso e nada lidera. */
 .kpi {
   position: relative;
+  display: flex;
   min-width: 0;
-  overflow: hidden;
-  padding: 19px;
+  flex-direction: column;
+  padding: 18px 18px 20px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  transition: transform var(--transition), border-color var(--transition), background var(--transition);
+  transition: border-color var(--transition), background var(--transition);
 }
-.kpi::before {
-  position: absolute;
-  top: 0;
-  left: 18px;
-  width: 44px;
-  height: 2px;
-  border-radius: 0 0 999px 999px;
-  content: "";
-  background: var(--accent);
+.kpi:hover { border-color: var(--border-strong); background: var(--surface-raised); }
+.kpi .label {
+  order: -1;
+  display: block;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 620;
+  letter-spacing: 0.07em;
+  line-height: 1.3;
+  text-transform: uppercase;
 }
-.kpi:hover { transform: translateY(-3px); border-color: rgba(239, 61, 87, 0.23); background: var(--surface-raised); }
 .kpi .value {
   overflow: hidden;
   color: var(--text);
-  font-size: clamp(1.55rem, 3vw, 2.05rem);
-  font-weight: 770;
-  line-height: 1.05;
-  letter-spacing: -0.05em;
+  font-size: clamp(2rem, 3.4vw, 2.9rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.045em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.kpi .label {
-  display: block;
-  min-height: 2.6em;
-  margin-top: 6px;
+.kpi .sub {
+  margin-top: 8px;
   color: var(--muted);
-  font-size: 0.79rem;
-  font-weight: 550;
-  line-height: 1.35;
+  font-size: 0.76rem;
 }
+.kpi .sub.up { color: var(--status-good); }
 .kpi .delta {
   display: inline-flex;
   min-height: 22px;
   align-items: center;
-  margin-top: 8px;
+  align-self: flex-start;
+  margin-top: 12px;
   padding: 3px 8px;
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.04);
@@ -362,10 +431,31 @@ html { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
 }
 .chart-row .chart-box { margin-bottom: 0; }
+
+/* Uma caixa com borda dentro de outra caixa com borda, ambas na mesma
+   superfície, vira lama visual. Quando o conteúdo do painel já são cards
+   (aderência) ou uma grade própria (heatmap), o painel externo vira só um
+   cabeçalho: sem borda, sem fundo, sem padding lateral. */
+.chart-box:has(> .kpis), .chart-box:has(> .heatmap) {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+/* Sem a caixa, o h2 deixa de ser um rótulo dentro de um card e vira cabeçalho
+   de seção: um pouco maior, com ar acima para separar do bloco anterior. */
+.chart-box:has(> .kpis) > h2, .chart-box:has(> .heatmap) > h2 {
+  margin-bottom: 14px;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
+.chart-box:has(> .kpis) + .chart-box, .chart-box:has(> .heatmap) + .chart-box { margin-top: 28px; }
+
 .chart-box h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0 0 16px;
   color: var(--text);
   font-size: 1.02rem;
@@ -373,8 +463,6 @@ html { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
   line-height: 1.3;
   letter-spacing: -0.01em;
 }
-/* Alternador gráfico ↔ tabela: fica no cabeçalho do card, alinhado à direita. */
-.chart-box h2 { display: flex; align-items: center; gap: 10px; }
 .table-toggle {
   margin-left: auto;
   padding: 5px 11px;
@@ -405,16 +493,10 @@ html { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
 .chart-table thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-raised); }
 .chart-table td { font-variant-numeric: tabular-nums; }
 
-.chart-box h2::before {
-  display: inline-block;
-  width: 6px;
-  height: 16px;
-  margin-right: 9px;
-  border-radius: 3px;
-  background: var(--accent);
-  vertical-align: -2px;
-  content: "";
-}
+/* O tique vermelho antes de cada h2 (e antes de cada KPI) aparecia seis ou mais
+   vezes por tela. Repetido assim, o acento deixa de acentuar: vira textura.
+   O vermelho agora tem um lugar só por vista — a aba ativa e os próprios
+   dados. */
 .chart-note {
   margin: -8px 0 16px;
   color: var(--muted);
@@ -777,6 +859,12 @@ button.heat-cell { cursor: pointer; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pr-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hero-actions { max-width: 48%; }
+}
+
+@media (max-width: 900px) {
+  .hero-body { grid-template-columns: minmax(0, 1fr); }
+  .streak-grid { overflow-x: auto; scrollbar-width: none; }
+  .streak-grid::-webkit-scrollbar { display: none; }
 }
 
 @media (max-width: 720px) {

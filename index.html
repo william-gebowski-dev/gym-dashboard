@@ -20,7 +20,7 @@
       <div class="hero-top">
         <div class="hero-heading">
           <h1 id="appTitle">Evolução de William</h1>
-          <p class="hero-subtitle">Performance, força e consistência baseadas no seu histórico real.</p>
+          <p class="hero-status" id="heroStatus"></p>
         </div>
         <div class="hero-actions">
           <button id="exportBtn" class="hero-action" title="Exportar PNG" aria-label="Exportar PNG">
@@ -36,8 +36,19 @@
           </div>
         </div>
       </div>
-      <div class="hero-period" id="rangePickerHost"></div>
-      <div id="summarySlot" class="summary-slot"></div>
+      <div class="hero-body">
+        <div class="hero-controls">
+          <div class="hero-period" id="rangePickerHost"></div>
+          <div id="summarySlot" class="summary-slot"></div>
+        </div>
+        <!-- A grade de dias é o artefato do caderno de treino: responde
+             "estou treinando?" antes de qualquer número. -->
+        <div class="streak" id="streakStrip" hidden>
+          <div class="streak-months" id="streakMonths" aria-hidden="true"></div>
+          <div class="streak-grid" id="streakGrid" role="img"></div>
+          <p class="streak-caption" id="streakCaption"></p>
+        </div>
+      </div>
     </header>
 
     <nav class="tabs-nav" role="tablist" aria-label="Abas principais">
@@ -145,6 +156,7 @@
   <script defer src="js/render.js"></script>
   <script defer src="js/drop.js"></script>
   <script defer src="js/summary.js"></script>
+  <script defer src="js/streak.js"></script>
   <script defer src="js/intensity.js"></script>
   <script defer src="js/measurements.js"></script>
   <script defer src="js/export.js"></script>
