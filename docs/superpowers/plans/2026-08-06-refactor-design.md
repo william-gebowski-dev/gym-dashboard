@@ -174,13 +174,20 @@ Criar `js/muscles.js`:
 window.Muscles = (function () {
   const DAY_MS = 86_400_000;
 
-  /** Meia-noite local, para comparar dias de calendário e não instantes. */
-  function midnight(date) {
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  /**
+   * Dia de calendário em UTC.
+   *
+   * UTC e não fuso local porque é a convenção já documentada do repositório
+   * (README § "Por que UTC?" e startOfWeekUTC/isoDayUTC em js/data.js):
+   * `startDate` vem com `Z`, e comparar contra meia-noite local faz a data
+   * escorregar de dia conforme o fuso de quem roda.
+   */
+  function utcDay(date) {
+    return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
   }
 
   function recencyByGroup(rawSessions, now) {
-    const hoje = midnight(now ?? new Date());
+    const hoje = utcDay(now ?? new Date());
     const porGrupo = new Map(); // grupo -> { lastDate, contagem: Map(exercicio -> n) }
 
     for (const sessao of rawSessions ?? []) {
@@ -210,7 +217,7 @@ window.Muscles = (function () {
       .map(([group, { lastDate, contagem }]) => ({
         group,
         lastDate,
-        daysSince: Math.round((hoje - midnight(lastDate)) / DAY_MS),
+        daysSince: Math.floor((hoje - utcDay(lastDate)) / DAY_MS),
         exercises: [...contagem.entries()]
           .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
           .map(([nome]) => nome),
@@ -412,8 +419,17 @@ window.Prescribe = (function () {
   const INCREMENTO_PADRAO = 2.5;
   const LACUNA_MAXIMA_DIAS = 180;
 
-  function midnight(date) {
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  /**
+   * Dia de calendário em UTC.
+   *
+   * UTC e não fuso local porque é a convenção já documentada do repositório
+   * (ver README § "Por que UTC?" e startOfWeekUTC/isoDayUTC em js/data.js):
+   * `startDate` vem com `Z`, e comparar contra meia-noite local faria a data
+   * escorregar de dia conforme o fuso de quem roda — inclusive quebrando os
+   * testes em qualquer runner a leste de UTC+2.
+   */
+  function utcDay(date) {
+    return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
   }
 
   /** Séries que contam: concluídas, não-aquecimento, com peso e reps válidos. */
@@ -456,8 +472,8 @@ window.Prescribe = (function () {
     if (!h.length) return null;
 
     const ultima = h[h.length - 1];
-    const hoje = midnight(now ?? new Date());
-    const daysSince = Math.round((hoje - midnight(ultima.date)) / DAY_MS);
+    const hoje = utcDay(now ?? new Date());
+    const daysSince = Math.floor((hoje - utcDay(ultima.date)) / DAY_MS);
 
     const peso = Math.max(...ultima.sets.map(s => s.weight));
     const noPeso = ultima.sets.filter(s => s.weight === peso);
