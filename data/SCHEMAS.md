@@ -1,10 +1,10 @@
 # Schemas dos JSONs consumidos
 
-Documentação dos campos efetivamente usados pelo dashboard. Atualizado
-em 2026-08-04 após auditoria completa do código + dados reais.
+Documentação dos campos efetivamente usados pelo dashboard.
 
-> **Resumo:** 4 JSONs ativos consumidos em `js/`. Outros 20 listados em
-> [Órfãos](#orfãos).
+> **Resumo:** 3 JSONs consumidos em `js/` — `WorkoutSession.json`,
+> `Measurement.json` e `MeasurementLog.json`. Os demais foram removidos
+> (ver [Arquivos removidos](#arquivos-removidos-do-repositório)).
 
 ---
 
@@ -68,71 +68,18 @@ Array de **140 sessões** (todas com `endDate`). Cada sessão:
 
 ---
 
-## `WorkoutSessionSet.json` ⚠️ consumido COM RESTRIÇÕES
+## Arquivos removidos do repositório
 
-Array de **3206 sets** com schema:
+Quatro JSONs foram removidos por nunca terem sido lidos por nenhum código.
+Continuam no histórico do git (`git show <commit>^:data/<arquivo>`) e podem
+voltar se um export futuro trouxer os campos que faltam.
 
-```jsonc
-{
-  "id": "uuid",
-  "isComplete": true,
-  "weight": 30,
-  "reps": 12,
-  "oneRepMax": 43.21,
-  "maxReps": 12,
-  "minReps": 8,
-  "restTime": 60,
-  "warmUp": false,
-  "dropSet": false,
-  "set": 1,
-  "measurementUnit": "kg",
-  "duration": ..., "expectedDuration": ..., "completedDate": ...,
-  "workoutExerciseSet": "uuid"  // FK para WorkoutExerciseSet
-}
-```
-
-### Limitação crítica
-
-O JSON **não tem campo de data nem nome de exercício** (apenas FKs para
-`WorkoutExerciseSet`). `workoutExerciseSet` aponta para o set *planejado*
-do plano, não para uma sessão específica. Logo, não é possível ancorar
-um set a uma data/treino sem fazer join.
-
-### Estado atual
-
-`js/rpe.js:buildScatterData` detecta se o JSON tem ancoragem temporal
-(`date`/`completedDate`/`exerciseName`). Se não tem, retorna `[]` e a UI
-exibe estado vazio elegante — **nenhum dado inventado**.
-
-Se o export do GymBook/Strong futuramente incluir `completedDate` ou
-`exerciseName` por set, o scatter RPE×%1RM aparece automaticamente.
-
----
-
-## `CoachWorkout.json` ✅ consumido (ADERÊNCIA)
-
-Array de **100 entradas**:
-
-```jsonc
-[
-  {
-    "id": "uuid",
-    "workout": {
-      "id": "uuid",
-      "name": "Peito, Costas, Ombros, Bíceps, Tríceps",
-      "exerciseList": [
-        { "exercise": {...}, "workoutExerciseSets": [...] }
-      ]
-    }
-  }
-]
-```
-
-> Cada `CoachWorkout` representa um template de treino. O schema **não tem
-> chave de data** (sem `scheduledDate`/`weekKey`), então a aderência
-> semanal é calculada **derivada** dos próprios treinos reais
-> (semanas com ≥ meta de treinos = aderência OK). Se o JSON futuramente
-> trouxer `weekKey`, o `js/coach.js` anexa planejado automaticamente.
+| Arquivo | Tamanho | Por que saiu |
+|---|---|---|
+| `WorkoutSessionSet.json` | 1,0 MB | Sem `date` e sem `exerciseName`: um set não podia ser ancorado a uma data ou exercício. Os mesmos 3221 sets já vêm aninhados em `WorkoutSession.json`, e lá **com** nome e data — é de lá que `js/intensity.js` lê. |
+| `CoachWorkout.json` | 1,5 MB | Sem `scheduledDate`/`weekKey`, aderência ao plano é incalculável. O painel mostrava `unknown 0/4` e duplicava "Aderência Semanal". |
+| `CoachWeek.json` | 1,5 MB | Superset de `CoachWorkout.json`, com a mesma ausência de datas. Nunca foi buscado. |
+| `Exercise.json` | 800 KB | Catálogo estático de 576 exercícios. Os nomes que o app usa já vêm aninhados em `WorkoutSession.json`. |
 
 ---
 
@@ -156,31 +103,19 @@ então `js/measurements.js:buildTimeline` retorna `[]` e UI mostra
 
 ---
 
-## Órfãos (20 arquivos NÃO consumidos)
+## O que o export original trazia
 
-| Arquivo | Tamanho | Recomendação | Por quê |
-|---------|---------|--------------|---------|
-| `Exercise.json` | 797 KB | Descartar | `WorkoutSession.exercise` já embute o necessário |
-| `MeasurementLog.json` | 2 B | Aguardar | vazio, popular a partir do app |
-| `MuscleGroup.json` | 2.3 KB | Descartar | inline em `WorkoutSession.exercise.primaryMuscleGroups` |
-| `Equipment.json` | 12 KB | Descartar | substituído por `exercise.equipment` inline |
-| `Bar.json` | 459 B | Descartar | metadata de barra, irrelevante |
-| `Plate.json` | 1.8 KB | Descartar | inventário de anilhas |
-| `Link.json` | 107 KB | Descartar | cross-refs internas do app |
-| `User.json` | 1.8 KB | Descartar | perfil, não exibido |
-| `UserPreferences.json` | 1.6 MB | Descartar | prefs sem utilidade |
-| `Workout.json` | 1.9 MB | Descartar | templates, sem date/anchor |
-| `WorkoutExercise.json` | 2.1 MB | Descartar | join sem uso |
-| `WorkoutExerciseSet.json` | 491 KB | Descartar | sets planejados |
-| `Schedule.json` | 1.7 MB | Descartar | cronograma sem ancoragem |
-| `CoachAssessment.json` | 729 KB | Descartar | sem date/anchor |
-| `CoachWeek.json` | 1.5 MB | Descartar | sem ancoragem |
-| `ExerciseNotes.json` | 2.7 KB | Descartar | sem date |
-| `Reminder.json` | 2 B | Aguardar | vazio |
-| `StatisticsExercise.json` | 2 B | Aguardar | vazio |
-| `WorkoutSessionExercise.json` | 3.1 MB | Descartar | redundante com `WorkoutSession.workoutSessionExercises` |
+O export do GymBook/Strong gera ~24 JSONs. A maioria nunca chegou a ser
+commitada aqui, e os que chegaram foram removidos (tabela acima). Os motivos
+se repetem: são tabelas de join (`WorkoutExercise.json`,
+`WorkoutSessionExercise.json`), catálogos que o `WorkoutSession.json` já
+embute inline (`MuscleGroup.json`, `Equipment.json`, `Exercise.json`),
+preferências e perfil sem uso na UI, ou templates sem ancoragem temporal
+(`Workout.json`, `Schedule.json`, `CoachAssessment.json`).
 
-> **Resumo**: 0 incorporar agora, 3 aguardar popular, 17 descartar.
+O padrão vale como regra ao avaliar um arquivo novo: **se ele não tem uma
+data e não tem um nome de exercício, ele não consegue virar um ponto em
+nenhum gráfico deste dashboard.**
 
 ---
 

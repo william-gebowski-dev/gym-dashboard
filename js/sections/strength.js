@@ -1,20 +1,22 @@
 /**
- * js/sections/strength.js — Charts e tabela da aba "strength"
+ * js/sections/strength.js — Charts de volume, 1RM, weekday e tabela de sessões
  *
  * Namespace: window.Strength
  *
- * Funções extraídas de js/render.js (commit 5de7999) para isolar a
- * renderização dos charts de Volume, 1RM, Weekday e a tabela de sessões
- * recentes. chartRegistry fica em js/render.js (compartilhado com
- * renderHeatmap, renderPRs, etc.) — usamos getOrCreateChart direto.
+ * As cores vêm de window.Charts.palette, não de constantes locais: os oito
+ * slots e a ORDEM deles foram validados contra a superfície real dos cards.
+ * Um gráfico de série única usa sempre o slot 1 — pintar cada card de uma cor
+ * diferente faria a cor significar "qual card" em vez de "qual série".
  *
- * Dependências: State, UI, Charts, Data
+ * Dependências: State, UI, Charts, Data, TableView
  */
 window.Strength = (function () {
   const { App } = window.State;
   const { sessionCard, openSessionModal } = window.UI;
-  const { getOrCreateChart } = window.Charts;
+  const { getOrCreateChart, palette, axis } = window.Charts;
   const { pickOneRepMax } = window.Data;
+
+  const nf = (n) => Math.round(n).toLocaleString('pt-BR');
 
   function renderVolumeChart(sessions) {
     const monthlyData = {};
@@ -26,22 +28,17 @@ window.Strength = (function () {
     const datasets = [{
       label: 'Volume (kg)',
       data: Object.values(monthlyData),
-      backgroundColor: 'rgba(255, 64, 93, 0.6)',
-      borderColor: window.CHART_COLORS.accent,
-      borderWidth: 1,
-      borderRadius: 6,
+      backgroundColor: palette.series[0],
+      maxBarThickness: 24,
     }];
 
     if (App.range?.from) {
       const from = new Date(App.range.from);
-      const spanMs = (sessions.length
-        ? sessions.at(-1).date - from
-        : Date.now() - from);
+      const spanMs = (sessions.length ? sessions.at(-1).date - from : Date.now() - from);
       const prevFrom = new Date(from.getTime() - spanMs);
-      const prevTo = from;
       const prevMonthly = {};
       for (const s of App.sessions) {
-        if (s.date < prevFrom || s.date >= prevTo) continue;
+        if (s.date < prevFrom || s.date >= from) continue;
         const key = `${s.date.getFullYear()}-${String(s.date.getMonth() + 1).padStart(2, '0')}`;
         prevMonthly[key] = (prevMonthly[key] || 0) + s.volume;
       }
@@ -52,40 +49,47 @@ window.Strength = (function () {
       };
       const shift = (labels.length - Object.keys(prevMonthly).length);
       const prevData = labels.map(l => prevMonthly[shiftKey(l, -shift)] ?? null);
-      datasets.push({
-        label: 'Período anterior',
-        data: prevData,
-        type: 'line',
-        borderColor: '#a1a1aa',
-        borderDash: [4, 4],
-        borderWidth: 1.5,
-        pointRadius: 2,
-        pointBackgroundColor: '#a1a1aa',
-        tension: 0.25,
-        spanGaps: false,
-      });
+      // Uma legenda que anuncia uma série que não desenha nada é ruído.
+      if (prevData.filter(v => v !== null).length >= 2) {
+        // Linha de referência, não uma segunda identidade: cinza de texto,
+        // para não gastar um slot categórico no que é só "o antes".
+        datasets.push({
+          label: 'Período anterior',
+          data: prevData,
+          type: 'line',
+          borderColor: palette.muted,
+          borderDash: [4, 4],
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointBackgroundColor: palette.muted,
+          tension: 0.25,
+          spanGaps: false,
+        });
+      }
     }
 
-    const data = { labels, datasets };
-    if (!App.charts.volumeChart) {
-      getOrCreateChart('volumeChart', {
-        type: 'bar',
-        data,
-        options: {
-          responsive: true,
-          plugins: { legend: { display: datasets.length > 1 } },
-          scales: {
-            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.06)' } },
-            x: { grid: { display: false } },
-          },
+    getOrCreateChart('volumeChart', {
+      type: 'bar',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: datasets.length > 1 },
+          tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${nf(c.parsed.y)} kg` } },
         },
-      });
-    } else {
-      const chart = App.charts.volumeChart;
-      chart.data = data;
-      chart.options.plugins.legend.display = datasets.length > 1;
-      chart.update('none');
-    }
+        scales: {
+          y: axis({ beginAtZero: true, ticks: { color: palette.tick, padding: 8, callback: (v) => nf(v) } }),
+          x: axis({ grid: { display: false } }),
+        },
+      },
+    });
+    window.TableView?.register('volumeChart', {
+      caption: 'Volume mensal em quilogramas',
+      labelHeader: 'Mês',
+      formatValue: (v) => `${nf(v)} kg`,
+    });
   }
 
   function renderOneRmChart(_sessions) {
@@ -104,113 +108,108 @@ window.Strength = (function () {
       }
     }
     const top = Object.entries(exerciseMax).sort(([, a], [, b]) => b - a).slice(0, 10);
-    const data = {
-      labels: top.map(([n]) => n),
-      datasets: [{
-        label: '1RM Estimado (kg)',
-        data: top.map(([, v]) => Math.round(v)),
-        backgroundColor: 'rgba(77, 141, 255, 0.6)',
-        borderColor: window.CHART_COLORS.strength,
-        borderWidth: 1,
-        borderRadius: 6,
-      }],
-    };
-    if (!App.charts.oneRmChart) {
-      getOrCreateChart('oneRmChart', {
-        type: 'bar',
-        data,
-        options: {
-          indexAxis: 'y',
-          responsive: true,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.06)' } },
-            y: { grid: { display: false } },
-          },
+    getOrCreateChart('oneRmChart', {
+      type: 'bar',
+      data: {
+        labels: top.map(([n]) => n),
+        datasets: [{
+          label: '1RM Estimado (kg)',
+          data: top.map(([, v]) => Math.round(v)),
+          backgroundColor: palette.series[0],
+          maxBarThickness: 20,
+        }],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (c) => `${nf(c.parsed.x)} kg` } },
         },
-      });
-    } else {
-      const chart = App.charts.oneRmChart;
-      chart.data = data;
-      chart.update('none');
-    }
+        scales: {
+          x: axis({ beginAtZero: true, ticks: { color: palette.tick, padding: 8, callback: (v) => `${v} kg` } }),
+          y: axis({ grid: { display: false } }),
+        },
+      },
+    });
+    window.TableView?.register('oneRmChart', {
+      caption: 'Dez exercícios com maior 1RM estimado',
+      labelHeader: 'Exercício',
+      formatValue: (v) => `${nf(v)} kg`,
+    });
   }
 
   function renderWeekdayChart(sessions) {
     const counts = new Array(7).fill(0);
     for (const s of sessions) counts[s.date.getDay()]++;
-    const data = {
-      labels: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
-      datasets: [{
-        label: 'Sessões',
-        data: counts,
-        backgroundColor: 'rgba(50, 213, 131, 0.6)',
-        borderColor: window.CHART_COLORS.positive,
-        borderWidth: 1,
-        borderRadius: 6,
-      }],
-    };
-    if (!App.charts.weekdayChart) {
-      getOrCreateChart('weekdayChart', {
-        type: 'bar',
-        data,
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.06)' } },
-            x: { grid: { display: false } },
-          },
+    getOrCreateChart('weekdayChart', {
+      type: 'bar',
+      data: {
+        labels: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+        datasets: [{
+          label: 'Sessões',
+          data: counts,
+          backgroundColor: palette.series[0],
+          maxBarThickness: 24,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (c) => `${c.parsed.y} ${c.parsed.y === 1 ? 'treino' : 'treinos'}` } },
         },
-      });
-    } else {
-      const chart = App.charts.weekdayChart;
-      chart.data = data;
-      chart.update('none');
-    }
+        scales: {
+          y: axis({ beginAtZero: true, ticks: { color: palette.tick, padding: 8, precision: 0 } }),
+          x: axis({ grid: { display: false } }),
+        },
+      },
+    });
+    window.TableView?.register('weekdayChart', {
+      caption: 'Número de treinos por dia da semana',
+      labelHeader: 'Dia',
+      formatValue: (v) => `${v} treinos`,
+    });
   }
 
   function renderSessionsTable(sessions) {
     const recent = sessions.slice(-10).reverse();
     const tbody = document.querySelector('#sessionsTable tbody');
-    if (tbody) tbody.replaceChildren();
     const cards = document.getElementById('sessionsCards');
+    if (tbody) tbody.replaceChildren();
     if (cards) cards.replaceChildren();
+
     for (const s of recent) {
+      const summary = {
+        id: s.id,
+        date: s.date,
+        name: s.name,
+        exercisesCount: s.exercises,
+        setsCount: s.sets,
+        volume: s.volume,
+      };
       if (tbody) {
         const tr = document.createElement('tr');
         tr.dataset.sessionId = s.id || '';
+        tr.tabIndex = 0;
         for (const value of [
           s.date.toLocaleDateString('pt-BR'),
           s.name || 'Treino',
           String(s.exercises ?? 0),
           String(s.sets ?? 0),
-          `${Math.round(s.volume).toLocaleString('pt-BR')} kg`,
+          `${nf(s.volume)} kg`,
         ]) {
           const td = document.createElement('td');
           td.textContent = value;
           tr.appendChild(td);
         }
-        tr.addEventListener('click', () => openSessionModal({
-          id: s.id,
-          date: s.date,
-          name: s.name,
-          exercisesCount: s.exercises,
-          setsCount: s.sets,
-          volume: s.volume,
-        }));
+        tr.addEventListener('click', () => openSessionModal(summary));
+        tr.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSessionModal(summary); }
+        });
         tbody.appendChild(tr);
       }
-      if (cards) {
-        cards.appendChild(sessionCard({
-          id: s.id,
-          date: s.date,
-          name: s.name,
-          exercisesCount: s.exercises,
-          setsCount: s.sets,
-          volume: s.volume,
-        }));
-      }
+      if (cards) cards.appendChild(sessionCard(summary));
     }
   }
 

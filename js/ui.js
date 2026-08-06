@@ -62,7 +62,10 @@ window.UI = (function () {
   }
 
   function sessionCard(session) {
-    const card = document.createElement('div');
+    // <button> em vez de <div>: o card abre um modal, então precisa ser
+    // focável e acionável por teclado sem handlers extras.
+    const card = document.createElement('button');
+    card.type = 'button';
     card.className = 'session-card';
     card.dataset.sessionId = session.id || '';
 
@@ -258,6 +261,13 @@ window.UI = (function () {
     return s;
   }
 
+  /**
+   * Escape defensivo para quando um valor precisar entrar como HTML.
+   *
+   * O resto deste módulo constrói DOM com textContent, que já é imune a
+   * injeção — esta função existe como rede de segurança para o dia em que
+   * alguém precisar montar markup por string. Coberta por tests/ui.test.js.
+   */
   function escapeHtml(s) {
     return String(s ?? '')
       .replace(/&/g, '&amp;')

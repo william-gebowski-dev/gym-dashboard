@@ -19,8 +19,6 @@ window.State = (function () {
     tab: 'overview',
     weeklyGoal: 4,
     loadedAt: null,
-    rpeSets: null,
-    coachWorkouts: null,
     measurements: null,
     measurementLogs: null,
   };

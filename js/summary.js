@@ -11,31 +11,35 @@ window.Summary = (function () {
     const { computePeriodDelta, computeWeeklyAdherence } = window.Data;
     const vol = computePeriodDelta(sessions, range, 'volume', 'sum');
     const adh = computeWeeklyAdherence(sessions);
-    const prevAdh = computePeriodDelta(sessions, range, 'weeklyFreq', 'avg');
 
+    // Sem período selecionado não existe intervalo anterior para comparar.
+    // A versão antiga comparava o histórico inteiro com ele mesmo e concluía
+    // "desempenho estável" — sempre, para qualquer dataset.
+    if (!vol.hasBase) {
+      const dates = sessions.map(s => s.date).sort((a, b) => a - b);
+      return window.I18N.t('summary.all', {
+        sessions: sessions.length,
+        first: dates[0].toLocaleDateString('pt-BR'),
+        last: dates.at(-1).toLocaleDateString('pt-BR'),
+        volume: Math.round(vol.current).toLocaleString('pt-BR'),
+        freq: adh.weeklyFreq.toFixed(1),
+      });
+    }
+
+    const prevAdh = computePeriodDelta(sessions, range, 'weeklyFreq', 'avg');
     const pct = vol.deltaPct;
     const curFreq = adh.weeklyFreq.toFixed(1);
-    const prevFreq = Number.isFinite(prevAdh.previous) ? prevAdh.previous.toFixed(1) : '0.0';
-    const freqDelta = Number.isFinite(prevAdh.previous)
-      ? Math.abs((adh.weeklyFreq - prevAdh.previous).toFixed(1))
-      : '0.0';
-
-    // Sem base comparativa (previous=0) → texto neutro
-    if (!vol.hasBase || !prevAdh.hasBase) {
-      return window.I18N.t('summary.flat');
-    }
-
-    const isUp = pct > 0;
-    const isDown = pct < 0;
+    const prevFreq = prevAdh.previous.toFixed(1);
+    const freqDelta = Math.abs((adh.weeklyFreq - prevAdh.previous).toFixed(1));
     const freqDown = adh.weeklyFreq < prevAdh.previous;
 
-    if (isUp && !freqDown) {
+    if (pct > 0 && !freqDown) {
       return window.I18N.t('summary.improving', { pct: Math.abs(pct), freqDelta });
     }
-    if (isUp && freqDown) {
+    if (pct > 0 && freqDown) {
       return window.I18N.t('summary.mixed', { pct: Math.abs(pct), prevFreq, curFreq });
     }
-    if (isDown) {
+    if (pct < 0) {
       return window.I18N.t('summary.declining', { pct: Math.abs(pct), freqDelta });
     }
     return window.I18N.t('summary.flat');

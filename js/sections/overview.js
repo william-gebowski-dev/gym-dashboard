@@ -24,17 +24,21 @@ window.Overview = (function () {
   }
 
   function renderKPIs(sessions) {
-    const sessionsDelta = computePeriodDelta(sessions, App.range, 'volume', 'count');
-    const volumeDelta = computePeriodDelta(sessions, App.range, 'volume', 'sum');
+    // Os deltas precisam do histórico COMPLETO: `sessions` já vem filtrado pelo
+    // período, então procurar o intervalo anterior dentro dele nunca acha nada
+    // e todo KPI ficava sem badge.
+    const all = App.sessions;
+    const sessionsDelta = computePeriodDelta(all, App.range, 'volume', 'count');
+    const volumeDelta = computePeriodDelta(all, App.range, 'volume', 'sum');
+    const perSessionDelta = computePeriodDelta(all, App.range, 'volume', 'avg');
     const adh = computeWeeklyAdherence(sessions, App.weeklyGoal);
-    const prevAdh = computePeriodDelta(sessions, App.range, 'weeklyFreq', 'avg');
 
-    const allPRs = window.Data.computePRs(App.rawSessions);
-    const classified = classifyPRs(allPRs);
-    const newPRs = classified.new.length;
-    const newestPR = classified.new[0] || classified.evolving[0] || null;
+    const classified = classifyPRs(window.Data.computePRs(App.rawSessions));
+    const newestPR = classified.new[0] || classified.evolving[0] || classified.stagnant[0] || null;
+    // O contador de novos PRs dá 0 na maioria dos períodos; o subtítulo com a
+    // data do recorde mais recente é o que torna o card informativo.
     const prSub = newestPR
-      ? { text: `Mais recente: ${newestPR.date.toLocaleDateString('pt-BR')}`, tone: 'up' }
+      ? { text: `Mais recente: ${newestPR.date.toLocaleDateString('pt-BR')}`, tone: classified.new.length ? 'up' : 'muted' }
       : { text: t('kpi.sub.newPRs'), tone: 'muted' };
 
     const container = document.getElementById('kpis');
@@ -42,8 +46,8 @@ window.Overview = (function () {
     container.replaceChildren(
       kpiCard(String(sessions.length), t('kpi.sessions'), buildDelta(sessionsDelta)),
       kpiCard(Math.round(volumeDelta.current).toLocaleString('pt-BR'), t('kpi.volume'), buildDelta(volumeDelta)),
-      kpiCard(adh.weeklyFreq.toFixed(1), t('kpi.weeklyFreq'), buildDelta(prevAdh)),
-      kpiCard(String(newPRs), t('kpi.newPRs'), null, prSub),
+      kpiCard(Math.round(perSessionDelta.current).toLocaleString('pt-BR'), t('kpi.volumePerSession'), buildDelta(perSessionDelta)),
+      kpiCard(String(classified.new.length), t('kpi.newPRs'), null, prSub),
     );
   }
 

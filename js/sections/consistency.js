@@ -1,41 +1,54 @@
 /**
- * js/sections/consistency.js — Heatmap e PRs da aba "consistency"
+ * js/sections/consistency.js — Heatmap diário e cards de PRs
  *
  * Namespace: window.Consistency
  *
- * Funções extraídas de js/render.js (commit 5de7999) para isolar a
- * renderização do heatmap diário e dos cards de PRs com sparklines.
+ * O heatmap usa a rampa sequencial de uma cor só (window.Charts.palette.heat,
+ * espelhada em --heat-1..4 no CSS): monotônica em L, com o degrau mais escuro
+ * a 2.10:1 da superfície. Magnitude nunca vira arco-íris — a ordem precisa
+ * estar visível na própria cor.
  *
  * Dependências: State, UI, Charts, Data, I18N
  */
 window.Consistency = (function () {
   const { App } = window.State;
-  const { spanText, prCard, prBadge } = window.UI;
-  const { getOrCreateChart, destroySparklines } = window.Charts;
+  const { spanText, prCard, prBadge, openSessionModal } = window.UI;
+  const { getOrCreateChart, destroySparklines, palette, wash } = window.Charts;
   const { computePRs, classifyPRs } = window.Data;
   const { t } = window.I18N;
 
+  const nf = (n) => Math.round(n).toLocaleString('pt-BR');
+
+  function relativeDays(days) {
+    if (!Number.isFinite(days)) return '—';
+    if (days <= 1) return 'ontem';
+    if (days < 30) return `há ${days} dias`;
+    if (days < 365) return `há ${Math.round(days / 30)} meses`;
+    const years = days / 365;
+    return years < 1.5 ? 'há 1 ano' : `há ${Math.round(years)} anos`;
+  }
+
   function renderHeatmap(sessions) {
     const dailyVolume = {};
+    const sessionByDay = new Map();
     for (const s of sessions) {
-      const key = s.date.toISOString().slice(0, 10);
+      const d = s.date;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       dailyVolume[key] = (dailyVolume[key] || 0) + s.volume;
+      if (!sessionByDay.has(key)) sessionByDay.set(key, s);
     }
-    const max = Math.max(0, ...Object.values(dailyVolume));
-    const sortedDates = Object.keys(dailyVolume).sort();
-    if (sortedDates.length === 0) {
-      const el = document.getElementById('heatmap');
-      if (el) el.replaceChildren();
-      return;
-    }
-    const start = new Date(sortedDates[0]);
-    const end = new Date(sortedDates.at(-1));
-    const startMonth = new Date(start.getFullYear(), start.getMonth(), 1);
     const container = document.getElementById('heatmap');
     if (!container) return;
+    const max = Math.max(0, ...Object.values(dailyVolume));
+    const sortedDates = Object.keys(dailyVolume).sort();
     container.replaceChildren();
-    const cursor = new Date(startMonth);
+    if (sortedDates.length === 0) return;
+
+    const start = new Date(`${sortedDates[0]}T00:00:00`);
+    const end = new Date(`${sortedDates.at(-1)}T00:00:00`);
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const frag = document.createDocumentFragment();
 
     while (cursor <= end) {
       const year = cursor.getFullYear();
@@ -48,39 +61,51 @@ window.Consistency = (function () {
       monthWrap.appendChild(label);
       const grid = document.createElement('div');
       grid.className = 'heat-grid';
-      const firstDayWeek = new Date(year, month, 1).getDay();
-      for (let i = 0; i < firstDayWeek; i++) {
+      for (let i = 0; i < new Date(year, month, 1).getDay(); i++) {
         const blank = document.createElement('div');
-        blank.className = 'heat-cell';
+        blank.className = 'heat-cell is-blank';
         grid.appendChild(blank);
       }
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       for (let day = 1; day <= daysInMonth; day++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const cell = document.createElement('div');
-        cell.className = 'heat-cell';
         const vol = dailyVolume[dateStr];
+        const dayLabel = new Date(`${dateStr}T00:00:00`).toLocaleDateString('pt-BR');
+        // Dia com treino vira botão: o heatmap deixa de ser decorativo e abre
+        // a sessão daquele dia, igual às linhas do histórico.
+        const cell = document.createElement(vol ? 'button' : 'div');
+        cell.className = 'heat-cell';
         if (vol) {
-          const level = Math.max(1, Math.min(4, Math.ceil((vol / max) * 4)));
-          cell.dataset.level = String(level);
-          cell.title = `${dateStr}: ${Math.round(vol).toLocaleString('pt-BR')} kg`;
+          const session = sessionByDay.get(dateStr);
+          cell.type = 'button';
+          cell.dataset.level = String(Math.max(1, Math.min(4, Math.ceil((vol / max) * 4))));
+          cell.title = `${dayLabel}: ${nf(vol)} kg`;
+          cell.setAttribute('aria-label', `${dayLabel}, ${nf(vol)} kg. Abrir treino.`);
+          if (session) {
+            cell.addEventListener('click', () => openSessionModal({
+              id: session.id,
+              date: session.date,
+              name: session.name,
+              exercisesCount: session.exercises,
+              setsCount: session.sets,
+              volume: session.volume,
+            }));
+          }
+        } else {
+          cell.title = `${dayLabel}: sem treino`;
         }
         grid.appendChild(cell);
       }
       monthWrap.appendChild(grid);
-      container.appendChild(monthWrap);
+      frag.appendChild(monthWrap);
       cursor.setMonth(cursor.getMonth() + 1);
     }
+    container.appendChild(frag);
   }
 
   function renderPRs() {
     const prs = computePRs(App.rawSessions);
-    const classified = classifyPRs(prs.map(p => ({
-      name: p.name,
-      weight: p.weight,
-      date: p.date,
-      history: p.history,
-    })));
+    const classified = classifyPRs(prs);
     const grid = document.getElementById('prGrid');
     if (!grid) return;
     destroySparklines();
@@ -90,27 +115,35 @@ window.Consistency = (function () {
       return;
     }
 
-    const renderGroup = (label, items, status) => {
-      if (!items.length) return;
+    const groups = [
+      [t('pr.group.new'), classified.new, 'new'],
+      [t('pr.group.evolving'), classified.evolving, 'evolving'],
+      [t('pr.group.stagnant'), classified.stagnant, 'stagnant'],
+    ].filter(([, items]) => items.length > 0);
+
+    // Com um grupo só, o cabeçalho já diz o status: repetir a badge em cada
+    // card seria a mesma palavra doze vezes.
+    const showBadges = groups.length > 1;
+
+    for (const [label, items, status] of groups) {
       const heading = document.createElement('div');
       heading.className = 'pr-group-heading';
       heading.textContent = label;
       grid.appendChild(heading);
+
       for (const pr of items) {
-        // prCard (ui.js) já cria .pr-name e .pr-weight com peso formatado.
         const card = prCard(pr);
 
         const meta = document.createElement('div');
         meta.className = 'pr-meta';
         const dateStr = pr.date ? pr.date.toLocaleDateString('pt-BR') : '—';
         meta.append(
-          spanText('PR: '),
-          spanText(dateStr),
+          spanText(`${dateStr} · ${relativeDays(pr._daysSince)}`),
           spanText(' · '),
           spanText(`${pr.history.length} séries`),
         );
         card.appendChild(meta);
-        card.appendChild(prBadge(status));
+        if (showBadges) card.appendChild(prBadge(status));
 
         const canvas = document.createElement('canvas');
         canvas.className = 'pr-sparkline';
@@ -123,9 +156,7 @@ window.Consistency = (function () {
           const k = h.date.toISOString().slice(0, 10);
           sessionsMax.set(k, Math.max(sessionsMax.get(k) || 0, h.weight));
         }
-        const points = [...sessionsMax.entries()]
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([k, v]) => ({ x: k, y: v }));
+        const points = [...sessionsMax.entries()].sort(([a], [b]) => a.localeCompare(b));
 
         if (points.length >= 2) {
           const canvasId = `pr-spark-${grid.children.length}`;
@@ -133,12 +164,12 @@ window.Consistency = (function () {
           getOrCreateChart(canvasId, {
             type: 'line',
             data: {
-              labels: points.map(p => p.x),
+              labels: points.map(([k]) => k),
               datasets: [{
-                data: points.map(p => p.y),
-                borderColor: window.CHART_COLORS.accent,
-                backgroundColor: 'rgba(255,64,93,0.15)',
-                borderWidth: 1.5,
+                data: points.map(([, v]) => v),
+                borderColor: palette.series[0],
+                backgroundColor: wash(palette.series[0], 0.1),
+                borderWidth: 2,
                 pointRadius: 0,
                 tension: 0.25,
                 fill: true,
@@ -146,7 +177,6 @@ window.Consistency = (function () {
             },
             options: {
               responsive: true,
-              maintainAspectRatio: false,
               plugins: { legend: { display: false }, tooltip: { enabled: false } },
               scales: { x: { display: false }, y: { display: false, beginAtZero: false } },
             },
@@ -155,11 +185,7 @@ window.Consistency = (function () {
           canvas.remove();
         }
       }
-    };
-
-    renderGroup(t('pr.group.new'), classified.new, 'new');
-    renderGroup(t('pr.group.evolving'), classified.evolving, 'evolving');
-    renderGroup(t('pr.group.stagnant'), classified.stagnant, 'stagnant');
+    }
   }
 
   return { renderHeatmap, renderPRs };

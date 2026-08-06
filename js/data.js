@@ -61,13 +61,9 @@ window.Data = (function () {
   // ──────────────────────────── fetch + memo
   async function loadAndAggregate() {
     const path = 'data/WorkoutSession.json';
-    let sig = path;
-    try {
-      const head = await fetch(path, { method: 'HEAD' });
-      const lm = head.headers.get('last-modified');
-      if (lm) sig = `${path}@${lm}`;
-    } catch { /* CORS/HEAD pode falhar em file://; cai no body */ }
-
+    // Sem HEAD prévio: era um round-trip a mais para montar uma chave de cache
+    // que nunca acertava — o memo é em memória e esta função roda uma vez só.
+    const sig = path;
     if (aggregateCache.has(sig)) return aggregateCache.get(sig);
 
     const resp = await fetch(path);
@@ -165,7 +161,11 @@ window.Data = (function () {
   /**
    * Compara `field` entre período atual e imediatamente anterior.
    * Retorna `deltaPct = null` e `hasBase = false` quando não há base
-   * comparativa (previous=0), permitindo UI mostrar "Sem base comparativa".
+   * comparativa, permitindo à UI omitir o badge.
+   *
+   * Sem `range.from` (modo "Tudo") não existe período anterior: comparar o
+   * histórico inteiro com ele mesmo produzia deltas de 0–1% que pareciam
+   * informação e não eram — e faziam o resumo concluir "estável" sempre.
    */
   function computePeriodDelta(sessions, range, field, agg) {
     if (!sessions || sessions.length === 0) {
@@ -173,22 +173,23 @@ window.Data = (function () {
     }
     agg = agg || 'sum';
 
-    const sortedTimes = sessions.map(s => s.date.getTime()).sort((a, b) => a - b);
-    const dataStart = sortedTimes[0];
-    const dataEnd = sortedTimes[sortedTimes.length - 1];
-    const dataSpan = Math.max(dataEnd - dataStart, 7 * 86_400_000);
-
     const from = (range && range.from) ? new Date(range.from + 'T00:00:00Z') : null;
     const to = (range && range.to) ? new Date(range.to + 'T23:59:59.999Z') : new Date();
-    const requestedSpan = from ? (to.getTime() - from.getTime()) : dataSpan;
-    const absSpan = requestedSpan > 0 ? requestedSpan : dataSpan;
 
-    const inRange = (d) => (!from || d >= from) && d <= to;
-    const inPrev = (d) => {
-      const prevTo = from || new Date(dataEnd + 86_400_000);
-      const prevFrom = new Date(prevTo.getTime() - absSpan);
-      return d >= prevFrom && d < prevTo;
-    };
+    if (!from) {
+      const pick = (s) => Number.isFinite(s[field]) ? s[field] : 0;
+      const xs = sessions.map(pick);
+      const total = agg === 'avg'
+        ? (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0)
+        : agg === 'count' ? xs.length : xs.reduce((a, b) => a + b, 0);
+      return { current: total, previous: 0, deltaPct: null, hasBase: false };
+    }
+
+    const absSpan = Math.max(1, to.getTime() - from.getTime());
+
+    const prevFrom = new Date(from.getTime() - absSpan);
+    const inRange = (d) => d >= from && d <= to;
+    const inPrev = (d) => d >= prevFrom && d < from;
 
     const aggregate = (xs) => {
       if (!xs.length) return 0;
