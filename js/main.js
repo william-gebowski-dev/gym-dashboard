@@ -88,7 +88,7 @@ window.Main = (function () {
   function wireExportButtons() {
     const exportBtn = document.getElementById('exportBtn');
     if (exportBtn) exportBtn.addEventListener('click', async () => {
-      try { await window.Export.toPNG(); } catch (e) { alert(e.message); }
+      try { await window.Export.toPNG(); } catch (e) { window.Toast?.show(e.message || 'Erro ao exportar', 'error'); }
     });
     const shareBtn = document.getElementById('shareBtn');
     if (shareBtn) shareBtn.addEventListener('click', async () => {
