@@ -134,7 +134,13 @@
       <section class="chart-box">
         <h2>Evolução Corporal</h2>
         <canvas id="measurementsChart" role="img" aria-label="Evolução das medidas corporais ao longo do tempo"></canvas>
-        <div id="measurementsEmpty" class="modal-hint" hidden>Sem medidas registradas ainda.</div>
+        <div id="measurementsEmpty" class="empty-state" hidden>
+          <p class="empty-title">Nenhuma medida registrada</p>
+          <p class="empty-body">
+            Este painel lê <code>data/MeasurementLog.json</code>, que veio vazio no export.
+            Registre peso ou circunferências no app e exporte de novo para ver a evolução aqui.
+          </p>
+        </div>
       </section>
     </section>
     </main>

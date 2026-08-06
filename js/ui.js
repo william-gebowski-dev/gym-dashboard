@@ -197,12 +197,14 @@ window.UI = (function () {
     title.id = 'sessionModalTitle';
     title.textContent = session.name || 'Treino';
 
+    // Só a primeira letra: em pt-BR o dia da semana e o mês são minúsculos, e
+    // capitalizar cada palavra daria "Quarta-Feira, 6 De Maio De 2026".
     const dateStr = session.date.toLocaleDateString('pt-BR', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     });
     const date = document.createElement('p');
     date.className = 'modal-date';
-    date.textContent = dateStr;
+    date.textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 
     const stats = document.createElement('div');
     stats.className = 'modal-stats';
