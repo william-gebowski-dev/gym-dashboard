@@ -71,7 +71,7 @@ window.Render = (function () {
 
   /** Converte um delta em props de badge, ou null quando não há base de comparação. */
   function buildDelta(d) {
-    if (!d || !d.hasPrevious) return null;
+    if (!d || !d.hasBase) return null;
     return {
       pct: d.deltaPct,
       direction: d.deltaPct > 0 ? 'up' : d.deltaPct < 0 ? 'down' : 'flat',

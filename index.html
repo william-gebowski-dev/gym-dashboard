@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self';
       script-src 'self' https://cdn.jsdelivr.net;
@@ -16,7 +16,7 @@
 <body>
   <a class="skip-link" href="#main">Pular para o conteúdo</a>
   <div class="wrap">
-    <header class="hero">
+    <header class="hero" role="banner">
       <div class="hero-top">
         <h1 id="appTitle">Evolução de William</h1>
         <div class="hero-actions">
@@ -38,10 +38,10 @@
     </header>
 
     <nav class="tabs-nav" role="tablist" aria-label="Seções do painel">
-      <button data-tab="overview" role="tab" aria-selected="true" aria-controls="tab-overview" class="active">Visão Geral</button>
-      <button data-tab="strength" role="tab" aria-selected="false" aria-controls="tab-strength">Força</button>
-      <button data-tab="consistency" role="tab" aria-selected="false" aria-controls="tab-consistency">Consistência</button>
-      <button data-tab="history" role="tab" aria-selected="false" aria-controls="tab-history">Histórico</button>
+      <button data-tab="overview" role="tab" aria-selected="true" aria-controls="tab-overview" tabindex="0" class="active">Visão Geral</button>
+      <button data-tab="strength" role="tab" aria-selected="false" aria-controls="tab-strength" tabindex="-1">Força</button>
+      <button data-tab="consistency" role="tab" aria-selected="false" aria-controls="tab-consistency" tabindex="-1">Consistência</button>
+      <button data-tab="history" role="tab" aria-selected="false" aria-controls="tab-history" tabindex="-1">Histórico</button>
     </nav>
 
     <main id="main">

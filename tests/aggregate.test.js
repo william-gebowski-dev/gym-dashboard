@@ -259,8 +259,8 @@ describe('summarizeSession', () => {
 /* ─── Testes: dados reais ──────────────────────────────────────── */
 
 describe('WorkoutSession.json (dados reais)', () => {
-  it('139 sessões presentes', () => {
-    assert.equal(realSessions.length, 139);
+  it('140 sessões presentes', () => {
+    assert.equal(realSessions.length, 140);
   });
 
   it('todas as sessões têm id e startDate', () => {

@@ -45,15 +45,44 @@ gym-dashboard/
 └── tests/              # node --test
 ```
 
-## Verificação
+## Comandos
 
-```bash
-node --test tests/aggregate.test.js
-```
+| Comando | O que faz |
+|---|---|
+| `npm start` | sobe servidor estático em `:8000` |
+| `npm test` | roda os testes unitários (0 dependências) |
+| `npm run validate` | valida o schema dos JSONs em `data/` |
 
-```bash
-node scripts/validate-data.js
-```
+## Filtros por URL
+
+Todos os filtros refletem na URL — dá para compartilhar e linkar.
+
+| Param | Exemplo | Resultado |
+|---|---|---|
+| `?days=N` | `?days=90` | últimos N dias a partir de hoje |
+| `?from=YYYY-MM-DD` | `?from=2026-01-01` | início explícito |
+| `?to=YYYY-MM-DD` | `?to=2026-06-30` | fim explícito |
+| `?tab=…` | `?tab=strength` | abre `overview`, `strength`, `consistency` ou `history` |
+
+Filtros e aba ativa são preservados em `localStorage` (chave `gym-dashboard`).
+
+## Cálculos determinísticos
+
+- **Volume** = Σ `weight × reps`, apenas para sets `isComplete: true`.
+- **1RM** = `set.oneRepMax` do JSON quando válido; senão **Epley**: `weight × (1 + reps / 30)`.
+- **Recordes (PRs)** = maior 1RM histórico por exercício, com a data do PR.
+- **Δ período** = período atual vs. o imediatamente anterior de mesma duração.
+  Sem `from` (modo "Tudo") não existe anterior: `hasBase = false` e a UI omite o
+  badge, em vez de comparar o histórico com ele mesmo e concluir "estável".
+- **Aderência semanal** = agrupa por **segunda-feira UTC** (ISO week). Meta em
+  `App.weeklyGoal` (default 4). Distingue semana concluída de em andamento.
+- **Intensidade** = `weight / melhor 1RM do exercício × 100` (ver "Notas sobre os dados").
+
+### Por que UTC?
+
+`startDate` é ISO 8601 com `Z`. Para o usuário no Brasil (BRT = UTC−3) não ver o
+treino das 22h como "amanhã", todo filtro e cálculo de semana usa UTC:
+`startOfWeekUTC(date)` devolve a segunda-feira UTC e `isoDayUTC(date)` o `YYYY-MM-DD` UTC.
 
 ## Cores dos gráficos
 
@@ -98,3 +127,28 @@ Todo gráfico tem um gêmeo em tabela (botão "Ver tabela"): o gráfico nunca é
   vazio até haver medidas registradas.
 
 Veja [`data/SCHEMAS.md`](data/SCHEMAS.md) para os campos por arquivo.
+
+## Deploy
+
+```bash
+vercel --prod
+```
+
+Configuração em [`vercel.json`](vercel.json): cache headers (`data/*` 1h, `js/*` 5min)
+e security headers (`X-Content-Type-Options`, `Referrer-Policy`).
+
+## Limitações
+
+- **Sem backend**: tudo roda client-side; os JSONs são estáticos e commitados junto.
+- **Somente leitura**: o dashboard não registra treinos, só lê os exports.
+- **Medidas corporais**: o export não traz logs, então o painel fica no estado vazio.
+
+## Privacidade
+
+Nenhum dado sai do browser — sem analytics, telemetria ou cookies de terceiros.
+O botão de compartilhar copia a URL atual (filtros + aba) para a área de
+transferência; `localStorage` guarda apenas filtros e aba ativa.
+
+## Licença
+
+MIT — uso pessoal. Os JSONs exportados do app são de propriedade do usuário.

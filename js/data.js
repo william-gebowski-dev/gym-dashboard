@@ -3,28 +3,91 @@
  *
  * Namespace: window.Data
  *
- * Funções:
- * - loadAndAggregate(): fetch + normalize das sessões (memo em memória)
- * - normalizeSession(s): shape → {id, name, date, durationMin, sets, volume, totalRestSec}
- * - computePRs(rawSessions): top 12 PRs com histórico
- * - computePeriodDelta(sessions, range, field, agg): {current, previous, deltaPct}
- * - computeWeeklyAdherence(sessions, goal): {currentStreak, longestStreak, totalWeeks, weeksHit, weeklyFreq}
- * - classifyPRs(prs): {new, evolving, stagnant}
+ * Funções puras testáveis (exportadas):
+ * - toNumber(value)
+ * - epley1RM(weight, reps)
+ * - pickOneRepMax(set)
+ * - startOfWeekUTC(date)
+ * - isoDayUTC(date)
+ * - applyRangeFilter(sessions, range)
+ * - normalizeSession(s)
+ * - computeVolume(input)
+ * - computePRs(rawSessions)
+ * - computePeriodDelta(sessions, range, field, agg)
+ * - computeWeeklyAdherence(sessions, goal)
+ * - classifyPRs(prs)
  */
 window.Data = (function () {
   const aggregateCache = new Map();
 
+  // ──────────────────────────── primitivos numéricos / datas
+  function toNumber(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    if (value == null) return 0;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  /** Fórmula de Epley: w * (1 + r/30) — referência clássica para 1RM estimado. */
+  function epley1RM(weight, reps) {
+    const w = toNumber(weight);
+    const r = toNumber(reps);
+    if (w <= 0 || r <= 0) return 0;
+    return w * (1 + r / 30);
+  }
+
+  /** Usa o `oneRepMax` do JSON se válido; senão cai para Epley. */
+  function pickOneRepMax(set) {
+    const raw = toNumber(set?.oneRepMax);
+    if (raw > 0) return raw;
+    return epley1RM(set?.weight, set?.reps);
+  }
+
+  /** Segunda-feira UTC da semana ISO de `date`. */
+  function startOfWeekUTC(date) {
+    const d = (date instanceof Date) ? new Date(date) : new Date(date);
+    if (isNaN(d)) return null;
+    const day = (d.getUTCDay() + 6) % 7;
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day));
+  }
+
+  /** YYYY-MM-DD em UTC — imutável ao fuso horário do usuário. */
+  function isoDayUTC(date) {
+    const d = (date instanceof Date) ? date : new Date(date);
+    if (isNaN(d)) return null;
+    return d.toISOString().slice(0, 10);
+  }
+
+  // ──────────────────────────── fetch + memo
   async function loadAndAggregate() {
     const path = 'data/WorkoutSession.json';
+    // Sem HEAD prévio: era um round-trip a mais para montar uma chave de cache
+    // que nunca acertava — o memo é em memória e esta função roda uma vez só.
     const sig = path;
     if (aggregateCache.has(sig)) return aggregateCache.get(sig);
 
     const resp = await fetch(path);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} ao buscar ${path}`);
     const raw = await resp.json();
+    if (!Array.isArray(raw)) throw new Error(`${path} deve ser array de sessões`);
     const sessions = raw.map(s => normalizeSession(s)).sort((a, b) => a.date - b.date);
     const summary = { sessions, raw, sig };
     aggregateCache.set(sig, summary);
     return summary;
+  }
+
+  /** Filtra sessões pelo range {from, to} (YYYY-MM-DD). Imutável, UTC. */
+  function applyRangeFilter(sessions, range) {
+    if (!sessions) return [];
+    if (!range || (!range.from && !range.to)) return sessions.slice();
+    const from = range.from ? new Date(range.from + 'T00:00:00Z') : null;
+    const to = range.to ? new Date(range.to + 'T23:59:59.999Z') : null;
+    return sessions.filter(s => {
+      if (!s.date || isNaN(s.date)) return false;
+      if (from && s.date < from) return false;
+      if (to && s.date > to) return false;
+      return true;
+    });
   }
 
   function normalizeSession(s) {
@@ -35,16 +98,21 @@ window.Data = (function () {
     for (const ex of exercises) {
       for (const set of (ex.workoutSessionSets ?? [])) {
         if (!set.isComplete) continue;
-        if (typeof set.weight !== 'number') continue;
+        const w = toNumber(set.weight);
+        const r = toNumber(set.reps);
+        if (w <= 0) continue;
         sets++;
-        volume += set.weight * set.reps;
-        totalRestSec += Number(set.restTime) || 0;
+        volume += w * r;
+        totalRestSec += toNumber(set.restTime);
       }
     }
     let durationMin = null;
     if (s.startDate && s.endDate) {
-      const ms = new Date(s.endDate) - new Date(s.startDate);
-      if (ms > 0) durationMin = ms / 60_000;
+      const start = new Date(s.startDate);
+      const end = new Date(s.endDate);
+      const ms = end - start;
+      // ignora outliers (>8h) por timezone malformado
+      if (ms > 0 && ms < 8 * 3600 * 1000) durationMin = Math.round(ms / 60_000);
     }
     return {
       id: s.id,
@@ -58,20 +126,29 @@ window.Data = (function () {
     };
   }
 
+  /** Volume total de uma sessão normalizada ou array delas. */
+  function computeVolume(input) {
+    if (Array.isArray(input)) return input.reduce((acc, s) => acc + toNumber(s.volume), 0);
+    return toNumber(input?.volume);
+  }
+
   function computePRs(rawSessions) {
     const prs = new Map();
     for (const s of rawSessions) {
       const date = new Date(s.startDate);
-      for (const ex of s.workoutSessionExercises ?? []) {
+      if (isNaN(date)) continue;
+      const exercises = s.workoutSessionExercises ?? [];
+      for (const ex of exercises) {
         const name = ex.exercise?.name;
         if (!name) continue;
         for (const set of ex.workoutSessionSets ?? []) {
           if (!set.isComplete) continue;
-          if (typeof set.weight !== 'number' || set.weight <= 0) continue;
+          const oneRm = pickOneRepMax(set);
+          if (oneRm <= 0) continue;
           const entry = prs.get(name) ?? { name, weight: 0, date: null, history: [] };
-          entry.history.push({ date, weight: set.weight });
-          if (set.weight > entry.weight) {
-            entry.weight = set.weight;
+          entry.history.push({ date, weight: oneRm });
+          if (oneRm > entry.weight) {
+            entry.weight = oneRm;
             entry.date = date;
           }
           prs.set(name, entry);
@@ -82,83 +159,98 @@ window.Data = (function () {
   }
 
   /**
-   * Compara o período selecionado com o período imediatamente anterior de mesma duração.
+   * Compara `field` entre período atual e imediatamente anterior.
+   * Retorna `deltaPct = null` e `hasBase = false` quando não há base
+   * comparativa, permitindo à UI omitir o badge.
    *
-   * Sem `range.from` (modo "Tudo") não existe período anterior: comparar o histórico
-   * inteiro contra ele mesmo produzia deltas de 0–1% que pareciam informação e não eram.
-   * Nesse caso devolvemos hasPrevious=false e a UI omite o badge.
+   * Sem `range.from` (modo "Tudo") não existe período anterior: comparar o
+   * histórico inteiro com ele mesmo produzia deltas de 0–1% que pareciam
+   * informação e não eram — e faziam o resumo concluir "estável" sempre.
    */
   function computePeriodDelta(sessions, range, field, agg) {
-    const empty = { current: 0, previous: 0, deltaPct: 0, hasPrevious: false };
-    if (!sessions || sessions.length === 0) return empty;
+    if (!sessions || sessions.length === 0) {
+      return { current: 0, previous: 0, deltaPct: null, hasBase: false };
+    }
     agg = agg || 'sum';
 
-    const from = range && range.from ? new Date(range.from) : null;
-    const to = range && range.to ? new Date(range.to + 'T23:59:59') : new Date();
+    const from = (range && range.from) ? new Date(range.from + 'T00:00:00Z') : null;
+    const to = (range && range.to) ? new Date(range.to + 'T23:59:59.999Z') : new Date();
 
-    const aggregateAll = (xs) => {
+    if (!from) {
+      const pick = (s) => Number.isFinite(s[field]) ? s[field] : 0;
+      const xs = sessions.map(pick);
+      const total = agg === 'avg'
+        ? (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0)
+        : agg === 'count' ? xs.length : xs.reduce((a, b) => a + b, 0);
+      return { current: total, previous: 0, deltaPct: null, hasBase: false };
+    }
+
+    const absSpan = Math.max(1, to.getTime() - from.getTime());
+
+    const prevFrom = new Date(from.getTime() - absSpan);
+    const inRange = (d) => d >= from && d <= to;
+    const inPrev = (d) => d >= prevFrom && d < from;
+
+    const aggregate = (xs) => {
       if (!xs.length) return 0;
       if (agg === 'avg') return xs.reduce((a, b) => a + b, 0) / xs.length;
       if (agg === 'count') return xs.length;
       return xs.reduce((a, b) => a + b, 0);
     };
 
-    if (!from) {
-      return {
-        current: aggregateAll(sessions.map(s => Number(s[field]) || 0)),
-        previous: 0,
-        deltaPct: 0,
-        hasPrevious: false,
-      };
-    }
+    const pickField = (s) => Number.isFinite(s[field]) ? s[field] : 0;
 
-    const absSpan = Math.max(1, to.getTime() - from.getTime());
-    const prevFrom = new Date(from.getTime() - absSpan);
+    const currentVals = sessions.filter(s => inRange(s.date)).map(pickField);
+    const prevVals = sessions.filter(s => inPrev(s.date)).map(pickField);
 
-    const inRange = (d) => d >= from && d <= to;
-    const inPrev = (d) => d >= prevFrom && d < from;
+    const current = aggregate(currentVals);
+    const previous = aggregate(prevVals);
+    const hasBase = previous > 0;
+    const deltaPct = hasBase ? Math.round(((current - previous) / previous) * 100) : null;
 
-    const current = aggregateAll(sessions.filter(s => inRange(s.date)).map(s => Number(s[field]) || 0));
-    const previous = aggregateAll(sessions.filter(s => inPrev(s.date)).map(s => Number(s[field]) || 0));
-    const deltaPct = previous > 0 ? Math.round(((current - previous) / previous) * 100) : 0;
-
-    return { current, previous, deltaPct, hasPrevious: previous > 0 };
+    return { current, previous, deltaPct, hasBase };
   }
 
   function computeWeeklyAdherence(sessions, goal) {
     goal = goal || 4;
     if (!sessions || sessions.length === 0) {
-      return { currentStreak: 0, longestStreak: 0, totalWeeks: 0, weeksHit: 0, weeklyFreq: 0 };
+      return { currentStreak: 0, longestStreak: 0, totalWeeks: 0, weeksHit: 0, weeklyFreq: 0, inProgressWeek: false };
     }
 
     const weekCounts = new Map();
+    const currentWeekKey = isoDayUTC(startOfWeekUTC(new Date()));
     for (const s of sessions) {
-      const d = s.date;
-      const day = (d.getDay() + 6) % 7;
-      const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - day);
-      const key = monday.toISOString().slice(0, 10);
+      const key = isoDayUTC(startOfWeekUTC(s.date));
       weekCounts.set(key, (weekCounts.get(key) || 0) + 1);
     }
 
     const sortedWeeks = [...weekCounts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    const totalWeeks = sortedWeeks.length;
     const weeksHit = sortedWeeks.filter(([, n]) => n >= goal).length;
 
+    // streak atual: semanas CONCLUÍDAS (anteriores à corrente) que bateram a meta
     let currentStreak = 0;
     for (let i = sortedWeeks.length - 1; i >= 0; i--) {
-      if (sortedWeeks[i][1] >= goal) currentStreak++;
+      const [key, n] = sortedWeeks[i];
+      if (key === currentWeekKey) continue;
+      if (n >= goal) currentStreak++;
       else break;
     }
 
+    // semana em andamento só conta como ativa se ainda não bateu meta
+    const inProgressCount = weekCounts.get(currentWeekKey) ?? 0;
+    const inProgressWeek = inProgressCount > 0 && inProgressCount < goal;
+
     let longestStreak = 0, run = 0;
-    for (const [, n] of sortedWeeks) {
+    for (const [key, n] of sortedWeeks) {
+      if (key === currentWeekKey) continue;
       if (n >= goal) { run++; if (run > longestStreak) longestStreak = run; }
       else run = 0;
     }
 
-    const totalWeeks = sortedWeeks.length || 1;
-    const weeklyFreq = sessions.length / totalWeeks;
+    const weeklyFreq = totalWeeks > 0 ? sessions.length / totalWeeks : 0;
 
-    return { currentStreak, longestStreak, totalWeeks, weeksHit, weeklyFreq };
+    return { currentStreak, longestStreak, totalWeeks, weeksHit, weeklyFreq, inProgressWeek, currentWeekKey };
   }
 
   function classifyPRs(prs) {
@@ -166,17 +258,23 @@ window.Data = (function () {
     const newPRs = [];
     const evolving = [];
     const stagnant = [];
-
     for (const pr of prs) {
-      const days = pr.date ? Math.floor((now - pr.date.getTime()) / 86_400_000) : Infinity;
-      const entry = { ...pr, _daysSince: days };
-      if (days <= 30) newPRs.push(entry);
-      else if (days <= 60) evolving.push(entry);
-      else stagnant.push(entry);
+      if (!pr.date) {
+        stagnant.push(pr);
+        continue;
+      }
+      const days = (now - pr.date.getTime()) / 86_400_000;
+      if (days <= 30) newPRs.push(pr);
+      else if (days <= 90) evolving.push(pr);
+      else stagnant.push(pr);
     }
-
     return { new: newPRs, evolving, stagnant };
   }
 
-  return { loadAndAggregate, normalizeSession, computePRs, computePeriodDelta, computeWeeklyAdherence, classifyPRs };
+  return {
+    toNumber, epley1RM, pickOneRepMax, startOfWeekUTC, isoDayUTC,
+    applyRangeFilter, normalizeSession, computeVolume, computePRs,
+    computePeriodDelta, computeWeeklyAdherence, classifyPRs,
+    loadAndAggregate, _resetAggregateCache: () => aggregateCache.clear(),
+  };
 })();

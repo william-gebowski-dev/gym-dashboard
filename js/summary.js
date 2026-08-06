@@ -15,7 +15,7 @@ window.Summary = (function () {
     // Sem período selecionado não existe intervalo anterior para comparar.
     // A versão antiga comparava o histórico inteiro com ele mesmo e concluía
     // "desempenho estável" — sempre, para qualquer dataset.
-    if (!vol.hasPrevious) {
+    if (!vol.hasBase) {
       const dates = sessions.map(s => s.date).sort((a, b) => a - b);
       return window.I18N.t('summary.all', {
         sessions: sessions.length,
