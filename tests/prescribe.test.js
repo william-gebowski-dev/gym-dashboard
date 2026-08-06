@@ -55,6 +55,33 @@ describe('usualIncrement', () => {
     ];
     assert.equal(P.usualIncrement(s, 'Supino'), 2.5);
   });
+
+  it('arredonda o incremento em vez de devolver lixo de ponto flutuante', () => {
+    const s = [
+      sessao('2026-01-01T10:00:00Z', 'Rosca', [serie(20.1, 10)]),
+      sessao('2026-01-08T10:00:00Z', 'Rosca', [serie(20.3, 10)]),
+    ];
+    assert.equal(P.usualIncrement(s, 'Rosca'), 0.2);
+  });
+
+  it('não confunde dois blocos do mesmo exercício na MESMA sessão com progressão', () => {
+    // Caso real: sessão de 2025-07-16 tem "Remada cavalinho na máquina" duas
+    // vezes. Sem agregar por dia, a diferença entre os blocos virava incremento.
+    const s = [
+      sessao('2026-01-01T10:00:00Z', 'Remada', [serie(50, 10)]),
+      {
+        id: 's-dupla',
+        startDate: '2026-01-08T10:00:00Z',
+        workoutSessionExercises: [
+          { exercise: { name: 'Remada' }, workoutSessionSets: [serie(40, 12)] },
+          { exercise: { name: 'Remada' }, workoutSessionSets: [serie(60, 12)] },
+        ],
+      },
+    ];
+    // A carga do dia foi 60, então o incremento é 60 − 50. Agregando por
+    // entrada em vez de por dia, sairia 20 (a diferença entre os dois blocos).
+    assert.equal(P.usualIncrement(s, 'Remada'), 10);
+  });
 });
 
 describe('suggest', () => {
@@ -93,6 +120,130 @@ describe('suggest', () => {
     assert.equal(r.suggestedWeight, null);
     assert.ok(r.daysSince > 180);
     assert.equal(r.lastWeight, 55);
+  });
+
+  it('no ramo stale nada é sugerido: peso, reps e incremento vêm nulos', () => {
+    const s = [
+      sessao('2024-06-01T10:00:00Z', 'Supino', [serie(50, 12)]),
+      sessao('2025-01-01T10:00:00Z', 'Supino', [serie(55, 12)]),
+    ];
+    const r = P.suggest(s, 'Supino', agora);
+    assert.equal(r.status, 'stale');
+    assert.equal(r.suggestedWeight, null);
+    assert.equal(r.targetReps, null);
+    assert.equal(r.increment, null);
+    assert.equal(r.lastReps, 12);
+  });
+
+  it('fixa a fronteira dos 180 dias: 180 ainda sugere, 181 é stale', () => {
+    const naFronteira = [sessao('2026-02-11T10:00:00Z', 'Supino', [serie(55, 12)])];
+    const rDentro = P.suggest(naFronteira, 'Supino', agora);
+    assert.equal(rDentro.daysSince, 180);
+    assert.equal(rDentro.status, 'raise');
+
+    const passouUmDia = [sessao('2026-02-10T10:00:00Z', 'Supino', [serie(55, 12)])];
+    const rFora = P.suggest(passouUmDia, 'Supino', agora);
+    assert.equal(rFora.daysSince, 181);
+    assert.equal(rFora.status, 'stale');
+  });
+
+  it('data no futuro não vira sugestão: degrada para stale', () => {
+    const s = [sessao('2026-09-01T10:00:00Z', 'Supino', [serie(55, 12)])];
+    const r = P.suggest(s, 'Supino', agora);
+    assert.equal(r.status, 'stale');
+    assert.ok(r.daysSince < 0);
+    assert.equal(r.suggestedWeight, null);
+  });
+
+  it('lastDate é a data da última sessão do exercício', () => {
+    const s = [
+      sessao('2026-08-01T10:00:00Z', 'Supino', [serie(50, 10)]),
+      sessao('2026-08-08T10:00:00Z', 'Supino', [serie(55, 10)]),
+      sessao('2026-08-09T10:00:00Z', 'Agachamento', [serie(100, 10)]),
+    ];
+    const r = P.suggest(s, 'Supino', agora);
+    assert.equal(r.lastDate.toISOString(), '2026-08-08T10:00:00.000Z');
+    assert.equal(r.daysSince, 2);
+  });
+
+  it('conta o dia em UTC, não no fuso de quem roda o código', () => {
+    // 23:00Z e 01:00Z do dia seguinte são 1 dia de diferença em UTC. Num fuso a
+    // leste (Tóquio) ou a oeste (Kiritimati/Honolulu) a meia-noite LOCAL cai no
+    // meio desse intervalo e a conta escorregaria para 0 ou 2.
+    const s = [sessao('2026-08-09T23:00:00Z', 'Supino', [serie(55, 10)])];
+    const r = P.suggest(s, 'Supino', new Date('2026-08-10T01:00:00Z'));
+    assert.equal(r.daysSince, 1);
+  });
+
+  it('agrega os dois blocos do mesmo exercício na mesma sessão', () => {
+    const s = [{
+      id: 's-dupla',
+      startDate: '2026-08-08T10:00:00Z',
+      workoutSessionExercises: [
+        { exercise: { name: 'Remada' }, workoutSessionSets: [serie(60, 12)] },
+        { exercise: { name: 'Remada' }, workoutSessionSets: [serie(40, 12)] },
+      ],
+    }];
+    // A carga do dia foi 60, não a do último bloco registrado.
+    assert.equal(P.suggest(s, 'Remada', agora).lastWeight, 60);
+  });
+
+  it('cada série é medida contra o próprio topo de faixa', () => {
+    // A segunda série tem topo 12 e fez 10: não bateu o próprio topo. Usar a
+    // faixa da primeira série (6–10) para as duas faria subir a carga à toa.
+    const s = [sessao('2026-08-08T10:00:00Z', 'Supino', [serie(50, 10, 6, 10), serie(50, 10, 8, 12)])];
+    const r = P.suggest(s, 'Supino', agora);
+    assert.equal(r.status, 'hold');
+    assert.equal(r.suggestedWeight, 50);
+    assert.equal(r.targetReps, 11);
+  });
+
+  it('faixa zerada não conta como faixa: cai no padrão 8–12', () => {
+    const zerada = { isComplete: true, warmUp: false, weight: 50, reps: 10, minReps: 0, maxReps: 0 };
+    const r = P.suggest([sessao('2026-08-08T10:00:00Z', 'Supino', [zerada])], 'Supino', agora);
+    assert.equal(r.status, 'hold');
+    assert.equal(r.targetReps, 11);
+  });
+});
+
+describe('suggest — teto de 10% no incremento', () => {
+  it('incremento dentro do teto sugere normalmente', () => {
+    const s = [
+      sessao('2026-08-01T10:00:00Z', 'Supino', [serie(50, 10)]),
+      sessao('2026-08-08T10:00:00Z', 'Supino', [serie(52, 12)]),
+    ];
+    const r = P.suggest(s, 'Supino', agora);
+    assert.equal(r.status, 'raise');
+    assert.equal(r.increment, 2);
+    assert.equal(r.suggestedWeight, 54);
+  });
+
+  it('incremento acima de 10% da carga não vira sugestão: status nosafe', () => {
+    // Caso real da "Panturrilha no leg press": menor incremento registrado 20 kg
+    // sobre 80 kg seria +25% num treino só.
+    const s = [
+      sessao('2026-08-01T10:00:00Z', 'Panturrilha', [serie(60, 10)]),
+      sessao('2026-08-08T10:00:00Z', 'Panturrilha', [serie(80, 12)]),
+    ];
+    const r = P.suggest(s, 'Panturrilha', agora);
+    assert.equal(r.status, 'nosafe');
+    assert.equal(r.suggestedWeight, null);
+    assert.equal(r.targetReps, null);
+    assert.equal(r.increment, 20);
+    assert.equal(r.lastWeight, 80);
+    assert.equal(r.lastReps, 12);
+    assert.equal(r.daysSince, 2);
+  });
+
+  it('na fronteira exata, incremento igual a 10% da carga ainda sugere', () => {
+    const s = [
+      sessao('2026-08-01T10:00:00Z', 'Supino', [serie(45, 10)]),
+      sessao('2026-08-08T10:00:00Z', 'Supino', [serie(50, 12)]),
+    ];
+    const r = P.suggest(s, 'Supino', agora);
+    assert.equal(r.increment, 5);
+    assert.equal(r.status, 'raise');
+    assert.equal(r.suggestedWeight, 55);
   });
 
   it('exercício que nunca apareceu devolve null', () => {
