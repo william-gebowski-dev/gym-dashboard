@@ -120,11 +120,16 @@ Todo gráfico tem um gêmeo em tabela (botão "Ver tabela"): o gráfico nunca é
   Por isso o gráfico de intensidade usa como referência o melhor 1RM do
   exercício em todo o histórico, não o `oneRepMax` da própria série.
 - Não existe campo de RPE nos dados. Qualquer "RPE" seria inventado.
-- `CoachWorkout.json` e `CoachWeek.json` não têm nenhum campo de data ou semana,
-  então não dá para calcular aderência ao plano do coach. O painel foi removido;
-  os arquivos seguem no repositório caso um export futuro traga esses campos.
+- Quatro JSONs do export foram **removidos** por nunca terem sido lidos:
+  `CoachWorkout` e `CoachWeek` (sem campo de data ou semana, aderência ao plano
+  é incalculável), `WorkoutSessionSet` (sem `date`/`exerciseName` — os mesmos
+  sets já vêm aninhados em `WorkoutSession.json`, e lá com nome e data) e
+  `Exercise` (catálogo que o principal já embute). Seguem no histórico do git.
 - `MeasurementLog.json` está vazio, então "Evolução Corporal" mostra o estado
   vazio até haver medidas registradas.
+
+> A regra que resume os cortes: **se um arquivo não tem data e não tem nome de
+> exercício, ele não vira ponto em nenhum gráfico daqui.**
 
 Veja [`data/SCHEMAS.md`](data/SCHEMAS.md) para os campos por arquivo.
 
