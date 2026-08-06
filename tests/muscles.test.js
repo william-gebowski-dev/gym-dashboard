@@ -84,6 +84,47 @@ describe('recencyByGroup', () => {
     assert.equal(r[0].group, 'Lats');
   });
 
+  it('conta dias em UTC, não no fuso local', () => {
+    // 22:00Z é o caso que motiva a convenção UTC do repo: em fuso local a leste
+    // esse instante vira o dia seguinte e daysSince cairia para 1.
+    const r = M.recencyByGroup(
+      [sessao('2026-08-08T22:00:00Z', [exercicio('Puxada', ['Lats'])])],
+      agora,
+    );
+    assert.equal(r[0].daysSince, 2);
+  });
+
+  it('expõe lastDate como Date da sessão mais recente do grupo', () => {
+    const r = M.recencyByGroup([
+      sessao('2026-08-03T10:00:00Z', [exercicio('Remada', ['Lats'])]),
+      sessao('2026-08-07T15:30:00Z', [exercicio('Puxada', ['Lats'])]),
+      sessao('2026-08-05T10:00:00Z', [exercicio('Puxada', ['Lats'])]),
+    ], agora);
+    assert.ok(r[0].lastDate instanceof Date);
+    assert.equal(r[0].lastDate.toISOString(), '2026-08-07T15:30:00.000Z');
+  });
+
+  it('exercícios de mesma frequência desempatam por ordem alfabética', () => {
+    const r = M.recencyByGroup([
+      sessao('2026-08-01T10:00:00Z', [exercicio('Remada', ['Lats'])]),
+      sessao('2026-08-02T10:00:00Z', [exercicio('Puxada', ['Lats'])]),
+    ], agora);
+    assert.deepEqual(r[0].exercises, ['Puxada', 'Remada']);
+  });
+
+  it('grupos com o mesmo daysSince desempatam por ordem alfabética', () => {
+    const r = M.recencyByGroup(
+      [sessao('2026-08-05T10:00:00Z', [
+        exercicio('Rosca', ['Biceps']),
+        exercicio('Supino', ['Chest']),
+        exercicio('Agachamento', ['Adductors']),
+      ])],
+      agora,
+    );
+    assert.deepEqual(r.map(x => x.group), ['Adductors', 'Biceps', 'Chest']);
+    assert.deepEqual(r.map(x => x.daysSince), [5, 5, 5]);
+  });
+
   it('lista vazia devolve array vazio', () => {
     assert.deepEqual(M.recencyByGroup([], agora), []);
     assert.deepEqual(M.recencyByGroup(null, agora), []);
