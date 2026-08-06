@@ -16,6 +16,8 @@ window.I18N = (function () {
     'kpi.volume': 'Volume (kg)',
     'kpi.weeklyFreq': 'Frequência Semanal',
     'kpi.volumePerSession': 'Volume médio por treino (kg)',
+    'kpi.newPRs': 'Novos Recordes',
+    'kpi.sub.newPRs': 'Nenhum recorde registrado',
     'kpi.currentAdherence': 'Semanas atuais com ≥{goal} treinos',
     'kpi.longestAdherence': 'Recorde de semanas',
     'kpi.weeksHit': 'Semanas cumpridas',

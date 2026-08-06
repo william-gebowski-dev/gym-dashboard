@@ -4,7 +4,7 @@
  * Namespace: window.UI
  */
 window.UI = (function () {
-  function kpiCard(value, label, delta) {
+  function kpiCard(value, label, delta, sub) {
     const card = document.createElement('div');
     card.className = 'kpi';
     const v = document.createElement('div');
@@ -21,6 +21,12 @@ window.UI = (function () {
       const arrow = direction === 'up' ? '↑' : direction === 'down' ? '↓' : '=';
       d.textContent = `${arrow} ${Math.abs(delta.pct)}% vs período anterior`;
       card.append(d);
+    }
+    if (sub && typeof sub.text === 'string') {
+      const s = document.createElement('div');
+      s.className = `sub ${sub.tone || 'muted'}`;
+      s.textContent = sub.text;
+      card.append(s);
     }
     return card;
   }
@@ -255,8 +261,24 @@ window.UI = (function () {
     return s;
   }
 
+  /**
+   * Escape defensivo para quando um valor precisar entrar como HTML.
+   *
+   * O resto deste módulo constrói DOM com textContent, que já é imune a
+   * injeção — esta função existe como rede de segurança para o dia em que
+   * alguém precisar montar markup por string. Coberta por tests/ui.test.js.
+   */
+  function escapeHtml(s) {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   return {
     kpiCard, summaryCard, prBadge, prCard, sessionCard, openSessionModal,
-    spanText, spanStrong,
+    spanText, spanStrong, escapeHtml,
   };
 })();

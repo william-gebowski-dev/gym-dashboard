@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }} · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 20]
+        os: [ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install
+        # Repo is zero-deps (vanilla JS), mas `npm install` cria package-lock
+        # se o lockfile existir. Sem ele, `npm ci` falharia.
+        run: npm install --no-audit --no-fund || true
+
+      - name: Test
+        run: npm test
+
+      - name: Validate data
+        run: npm run validate
