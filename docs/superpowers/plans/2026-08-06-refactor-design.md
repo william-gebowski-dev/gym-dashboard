@@ -16,6 +16,7 @@
 - **Faixa de repetições padrão quando ausente: `(8, 12)`.** É a faixa em 2.323 de 2.359 séries do dataset.
 - **Incremento padrão quando não há histórico no exercício: `2.5` kg.**
 - **Lacuna máxima para sugerir carga: `180` dias.** Acima disso, mostrar última carga sem sugestão.
+- **Teto de incremento: `10%` da carga atual.** Se o menor incremento histórico do exercício ultrapassar isso, NÃO sugerir aumento (`status: 'nosafe'`) — inventar um valor de anilha que o usuário talvez não tenha é pior que admitir que o histórico não oferece passo seguro.
 - **Nenhuma sugestão sem pelo menos uma sessão anterior registrada** para aquele exercício.
 - **Toda sugestão aparece ao lado do que foi feito**, nunca sozinha.
 - **Textos em pt-BR**, sentence case, sem ponto final em rótulo.
