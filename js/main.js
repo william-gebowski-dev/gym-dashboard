@@ -7,14 +7,14 @@
  * 1. Parse range da URL
  * 2. Render hero (range picker)
  * 3. Se file:// → dropzone
- * 4. fetch + populate App → rerender
+ * 4. fetch + populate App → rerender (uma única vez)
  * 5. Listener 'gym:rangechange' para re-render ao trocar range
  * 6. Init tabs + summary + timestamps
  */
 window.Main = (function () {
   const { App, parseRangeFromURL } = window.State;
   const { loadAndAggregate } = window.Data;
-  const { renderHero, rerender } = window.Render;
+  const { renderHero, rerender, renderMeasurementsChart } = window.Render;
   const { showFileDropZone } = window.Drop;
   const { summaryCard } = window.UI;
 
@@ -58,14 +58,16 @@ window.Main = (function () {
       updateTimestamps(sessions);
       renderSummary(sessions);
       rerender();
-      window.RPE?.load().then(sets => { App.rpeSets = sets; rerender(); }).catch(() => {});
-      window.Coach?.load().then(workouts => { App.coachWorkouts = workouts; rerender(); }).catch(() => {});
+      window.Tabs.init();
+
+      // Medidas são um arquivo pequeno e alimentam UM painel. Antes, cada fetch
+      // secundário disparava um rerender() completo (~70 ms + 12 sparklines
+      // recriadas); agora só o painel afetado é redesenhado.
       window.Measurements?.load().then(({ measurements, logs }) => {
         App.measurements = measurements;
         App.measurementLogs = logs;
-        rerender();
+        renderMeasurementsChart();
       }).catch(() => {});
-      window.Tabs.init();
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
       const { kpiCard } = window.UI;
@@ -88,8 +90,13 @@ window.Main = (function () {
     const shareBtn = document.getElementById('shareBtn');
     if (shareBtn) shareBtn.addEventListener('click', async () => {
       const res = await window.Export.shareURL();
-      shareBtn.textContent = res.ok ? '✓' : '✗';
-      setTimeout(() => { shareBtn.textContent = '🔗'; }, 1500);
+      // O ícone é um SVG; trocar textContent o apagaria. Só sinalizamos o estado.
+      shareBtn.classList.toggle('is-ok', res.ok);
+      shareBtn.setAttribute('aria-label', res.ok ? 'Link copiado' : 'Não foi possível copiar o link');
+      setTimeout(() => {
+        shareBtn.classList.remove('is-ok');
+        shareBtn.setAttribute('aria-label', 'Copiar link');
+      }, 1500);
     });
   }
 

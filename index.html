@@ -5,34 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self';
-      script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline';
-      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-      font-src https://fonts.gstatic.com;
+      script-src 'self' https://cdn.jsdelivr.net;
+      style-src 'self' 'unsafe-inline';
       img-src 'self' https://d3r2akiggou3b8.cloudfront.net data:;
       connect-src 'self';">
   <title>Evolução — Gym Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='4' fill='%23ef3d57'/><path d='M4 5v6M12 5v6M4 8h8' stroke='%23fff' stroke-width='2' stroke-linecap='round'/></svg>">
   <link rel="stylesheet" href="css/style.css">
-  <style>
-    /* Inline only the legacy V1 fallback (table-on-mobile) until full V2 audit. */
-    @media (max-width: 720px) {
-      .sessions-cards { display: none; }
-    }
-  </style>
 </head>
 <body>
+  <a class="skip-link" href="#main">Pular para o conteúdo</a>
   <div class="wrap">
     <header class="hero">
       <div class="hero-top">
         <h1 id="appTitle">Evolução de William</h1>
         <div class="hero-actions">
-          <button id="exportBtn" class="hero-action" title="Exportar PNG" aria-label="Exportar PNG">📸</button>
-          <button id="shareBtn" class="hero-action" title="Copiar link" aria-label="Copiar link">🔗</button>
+          <button id="exportBtn" class="hero-action" title="Exportar PNG" aria-label="Exportar PNG">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.2"/></svg>
+          </button>
+          <button id="shareBtn" class="hero-action" title="Copiar link" aria-label="Copiar link">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13.5a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M14 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1-1"/></svg>
+          </button>
           <div class="hero-meta">
             <span id="lastWorkout"></span>
-            <span class="dot">·</span>
+            <span class="dot"></span>
             <span>Atualizado <span id="updatedAt">--:--</span></span>
           </div>
         </div>
@@ -41,40 +37,42 @@
       <div id="summarySlot" class="summary-slot"></div>
     </header>
 
-    <nav class="tabs-nav">
-      <button data-tab="overview" class="active">Visão Geral</button>
-      <button data-tab="strength">Força</button>
-      <button data-tab="consistency">Consistência</button>
-      <button data-tab="history">Histórico</button>
+    <nav class="tabs-nav" role="tablist" aria-label="Seções do painel">
+      <button data-tab="overview" role="tab" aria-selected="true" aria-controls="tab-overview" class="active">Visão Geral</button>
+      <button data-tab="strength" role="tab" aria-selected="false" aria-controls="tab-strength">Força</button>
+      <button data-tab="consistency" role="tab" aria-selected="false" aria-controls="tab-consistency">Consistência</button>
+      <button data-tab="history" role="tab" aria-selected="false" aria-controls="tab-history">Histórico</button>
     </nav>
 
-    <section class="tab-panel" data-tab="overview" id="tab-overview">
+    <main id="main">
+    <section class="tab-panel" data-tab="overview" id="tab-overview" role="tabpanel">
       <section class="kpis" id="kpis"></section>
       <div class="chart-row">
         <div class="chart-box">
           <h2>Volume Mensal</h2>
-          <canvas id="volumeChart"></canvas>
+          <canvas id="volumeChart" role="img" aria-label="Volume total levantado por mês"></canvas>
         </div>
         <div class="chart-box">
           <h2>Frequência Semanal</h2>
-          <canvas id="weekdayChart"></canvas>
+          <canvas id="weekdayChart" role="img" aria-label="Número de treinos por dia da semana"></canvas>
         </div>
       </div>
     </section>
 
-    <section class="tab-panel" data-tab="strength" hidden id="tab-strength">
+    <section class="tab-panel" data-tab="strength" hidden id="tab-strength" role="tabpanel">
       <div class="chart-box">
         <h2>Top 10 por 1RM</h2>
-        <canvas id="oneRmChart"></canvas>
+        <canvas id="oneRmChart" role="img" aria-label="Dez exercícios com maior 1RM estimado"></canvas>
       </div>
       <div class="chart-box">
-        <h2>Intensidade: RPE × %1RM</h2>
-        <canvas id="rpeChart"></canvas>
+        <h2>Intensidade: carga × repetições</h2>
+        <p class="chart-note">Cada ponto é uma série concluída. O eixo X mostra a carga como percentual do seu melhor 1RM estimado naquele exercício.</p>
+        <canvas id="rpeChart" role="img" aria-label="Dispersão de séries por percentual do melhor 1RM e repetições"></canvas>
       </div>
       <div class="chart-box">
         <h2>Comparar Exercícios</h2>
         <div id="comparisonSelect" class="comparison-select"></div>
-        <canvas id="comparisonChart"></canvas>
+        <canvas id="comparisonChart" role="img" aria-label="Evolução de carga dos exercícios selecionados"></canvas>
       </div>
       <section class="chart-box">
         <h2>Recordes Pessoais</h2>
@@ -82,14 +80,10 @@
       </section>
     </section>
 
-    <section class="tab-panel" data-tab="consistency" hidden>
+    <section class="tab-panel" data-tab="consistency" hidden id="tab-consistency" role="tabpanel">
       <section class="chart-box">
         <h2>Aderência Semanal</h2>
         <div id="adherenceCards" class="kpis"></div>
-      </section>
-      <section class="chart-box">
-        <h2>Aderência ao Plano do Coach</h2>
-        <div id="coachList"></div>
       </section>
       <section class="chart-box">
         <h2>Volume Diário</h2>
@@ -106,7 +100,7 @@
       </section>
     </section>
 
-    <section class="tab-panel" data-tab="history" hidden id="tab-history">
+    <section class="tab-panel" data-tab="history" hidden id="tab-history" role="tabpanel">
       <section class="chart-box">
         <h2>Últimas Sessões</h2>
         <table id="sessionsTable">
@@ -125,28 +119,27 @@
       </section>
       <section class="chart-box">
         <h2>Evolução Corporal</h2>
-        <canvas id="measurementsChart"></canvas>
+        <canvas id="measurementsChart" role="img" aria-label="Evolução das medidas corporais ao longo do tempo"></canvas>
         <div id="measurementsEmpty" class="modal-hint" hidden>Sem medidas registradas ainda.</div>
       </section>
     </section>
+    </main>
   </div>
 
-  <!--
-    Chart.js 4.4.7 via cdn.jsdelivr.net.
-  -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
+  <!-- Chart.js pinado: URL e hash SRI precisam andar juntos, senão o script é bloqueado. -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+  <!-- html2canvas carrega sob demanda no primeiro export (ver js/export.js). -->
   <!-- Módulos (namespaces globais, ordem importa) -->
   <script defer src="js/i18n.js"></script>
   <script defer src="js/state.js"></script>
   <script defer src="js/data.js"></script>
   <script defer src="js/ui.js"></script>
   <script defer src="js/charts.js"></script>
+  <script defer src="js/tableview.js"></script>
   <script defer src="js/render.js"></script>
   <script defer src="js/drop.js"></script>
   <script defer src="js/summary.js"></script>
-  <script defer src="js/rpe.js"></script>
-  <script defer src="js/coach.js"></script>
+  <script defer src="js/intensity.js"></script>
   <script defer src="js/measurements.js"></script>
   <script defer src="js/export.js"></script>
   <script defer src="js/tabs.js"></script>

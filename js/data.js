@@ -4,7 +4,7 @@
  * Namespace: window.Data
  *
  * Funções:
- * - loadAndAggregate(): fetch Work JSON com memo por lastModified
+ * - loadAndAggregate(): fetch + normalize das sessões (memo em memória)
  * - normalizeSession(s): shape → {id, name, date, durationMin, sets, volume, totalRestSec}
  * - computePRs(rawSessions): top 12 PRs com histórico
  * - computePeriodDelta(sessions, range, field, agg): {current, previous, deltaPct}
@@ -16,13 +16,7 @@ window.Data = (function () {
 
   async function loadAndAggregate() {
     const path = 'data/WorkoutSession.json';
-    let sig = path;
-    try {
-      const head = await fetch(path, { method: 'HEAD' });
-      const lm = head.headers.get('last-modified');
-      if (lm) sig = `${path}@${lm}`;
-    } catch { /* CORS/HEAD pode falhar em file://; cai no body */ }
-
+    const sig = path;
     if (aggregateCache.has(sig)) return aggregateCache.get(sig);
 
     const resp = await fetch(path);
@@ -87,42 +81,48 @@ window.Data = (function () {
     return [...prs.values()].sort((a, b) => b.weight - a.weight).slice(0, 12);
   }
 
+  /**
+   * Compara o período selecionado com o período imediatamente anterior de mesma duração.
+   *
+   * Sem `range.from` (modo "Tudo") não existe período anterior: comparar o histórico
+   * inteiro contra ele mesmo produzia deltas de 0–1% que pareciam informação e não eram.
+   * Nesse caso devolvemos hasPrevious=false e a UI omite o badge.
+   */
   function computePeriodDelta(sessions, range, field, agg) {
-    if (!sessions || sessions.length === 0) return { current: 0, previous: 0, deltaPct: 0 };
+    const empty = { current: 0, previous: 0, deltaPct: 0, hasPrevious: false };
+    if (!sessions || sessions.length === 0) return empty;
     agg = agg || 'sum';
-
-    const sortedTimes = sessions.map(s => s.date.getTime()).sort((a, b) => a - b);
-    const dataStart = sortedTimes[0];
-    const dataEnd = sortedTimes[sortedTimes.length - 1];
-    const dataSpan = dataEnd - dataStart;
 
     const from = range && range.from ? new Date(range.from) : null;
     const to = range && range.to ? new Date(range.to + 'T23:59:59') : new Date();
-    const requestedSpan = from ? (to.getTime() - from.getTime()) : dataSpan;
-    const absSpan = requestedSpan > 0 ? requestedSpan : dataSpan;
 
-    const inRange = (d) => (!from || d >= from) && d <= to;
-    const inPrev = (d) => {
-      const prevTo = from || new Date(dataEnd);
-      const prevFrom = new Date(prevTo.getTime() - absSpan);
-      return d >= prevFrom && d < prevTo;
-    };
-
-    const aggregate = (xs) => {
+    const aggregateAll = (xs) => {
       if (!xs.length) return 0;
       if (agg === 'avg') return xs.reduce((a, b) => a + b, 0) / xs.length;
       if (agg === 'count') return xs.length;
       return xs.reduce((a, b) => a + b, 0);
     };
 
-    const currentVals = sessions.filter(s => inRange(s.date)).map(s => Number(s[field]) || 0);
-    const prevVals = sessions.filter(s => inPrev(s.date)).map(s => Number(s[field]) || 0);
+    if (!from) {
+      return {
+        current: aggregateAll(sessions.map(s => Number(s[field]) || 0)),
+        previous: 0,
+        deltaPct: 0,
+        hasPrevious: false,
+      };
+    }
 
-    const current = aggregate(currentVals);
-    const previous = aggregate(prevVals);
+    const absSpan = Math.max(1, to.getTime() - from.getTime());
+    const prevFrom = new Date(from.getTime() - absSpan);
+
+    const inRange = (d) => d >= from && d <= to;
+    const inPrev = (d) => d >= prevFrom && d < from;
+
+    const current = aggregateAll(sessions.filter(s => inRange(s.date)).map(s => Number(s[field]) || 0));
+    const previous = aggregateAll(sessions.filter(s => inPrev(s.date)).map(s => Number(s[field]) || 0));
     const deltaPct = previous > 0 ? Math.round(((current - previous) / previous) * 100) : 0;
 
-    return { current, previous, deltaPct };
+    return { current, previous, deltaPct, hasPrevious: previous > 0 };
   }
 
   function computeWeeklyAdherence(sessions, goal) {

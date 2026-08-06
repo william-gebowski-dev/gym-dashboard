@@ -4,6 +4,12 @@ archive/
 index_restaurado.html
 *_restaurado.html
 
+# Saída de ferramentas de browser automation
+.playwright-mcp/
+
+# Saída de ferramentas de browser automation
+.playwright-mcp/
+
 # Editor / OS
 .DS_Store
 Thumbs.db
