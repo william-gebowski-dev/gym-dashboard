@@ -561,6 +561,13 @@ Criar `css/tokens.css` copiando o `:root` atual de `css/style.css` **sem alterar
   --heat-4: #fe324d;
   --status-good: #0ca30c;
   --status-serious: #ec835a;
+
+  /* Níveis de atraso do mapa de grupos. Mesma disciplina da rampa do heatmap:
+     degrau declarado em token, não rgba solto no componente. */
+  --late-1: rgba(239, 61, 87, 0.18);
+  --late-2: rgba(239, 61, 87, 0.34);
+  --late-2-bg: rgba(239, 61, 87, 0.05);
+  --late-3-bg: rgba(239, 61, 87, 0.1);
   --success: #35c983;
   --success-soft: rgba(53, 201, 131, 0.11);
   --warning: #f5ad42;
@@ -601,13 +608,22 @@ Criar `css/tokens.css` copiando o `:root` atual de `css/style.css` **sem alterar
 }
 ```
 
-- [ ] **Step 2: Apontar `style.css` para os tokens**
+- [ ] **Step 2: Apontar o HTML para os tokens**
 
-Em `css/style.css`, apagar todo o bloco `:root { … }` do topo e pôr, como **primeira linha do arquivo** (`@import` precisa vir antes de qualquer regra):
+Em `css/style.css`, apagar todo o bloco `:root { … }` do topo.
 
-```css
-@import url("tokens.css");
+Em `index.html`, no `<head>`, carregar tokens **antes** de style.css:
+
+```html
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/style.css">
 ```
+
+**Não use `@import`.** Ele encadeia os downloads em série — o browser só
+descobre o segundo arquivo depois de baixar e parsear o primeiro. Com quatro
+arquivos (Task 6) isso seriam quatro round-trips enfileirados, o oposto do
+objetivo de eficiência. Tags `<link>` são descobertas de uma vez no parse do
+HTML e baixam em paralelo.
 
 - [ ] **Step 3: Verificar que nada quebrou visualmente**
 
@@ -853,9 +869,9 @@ Acrescentar ao fim de `css/style.css`:
   text-align: left;
   transition: border-color var(--transition), background var(--transition);
 }
-.muscle-card[data-level="1"] { border-color: rgba(239, 61, 87, 0.18); }
-.muscle-card[data-level="2"] { border-color: rgba(239, 61, 87, 0.34); background: rgba(239, 61, 87, 0.05); }
-.muscle-card[data-level="3"] { border-color: var(--accent); background: rgba(239, 61, 87, 0.1); }
+.muscle-card[data-level="1"] { border-color: var(--late-1); }
+.muscle-card[data-level="2"] { border-color: var(--late-2); background: var(--late-2-bg); }
+.muscle-card[data-level="3"] { border-color: var(--accent); background: var(--late-3-bg); }
 .muscle-card:hover { background: var(--surface-raised); }
 .muscle-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .muscle-name { color: var(--text); font-size: var(--text-base); font-weight: 650; }
@@ -1029,18 +1045,19 @@ Mover os blocos de `css/style.css`, sem alterar nenhuma regra:
 - `components.css` — `.kpi`, `.chart-box`, `.table-toggle`, `.chart-table`, tabelas, `.session-card`, `.pr-*`, `.modal-*`, `.toast*`, `.empty-state`, `.streak*`, `.muscle-*`, `.load-*`
 - `sections.css` — `.hero*`, `.tabs-nav`, `.evo-*`, `.today-*`, `.heatmap`, `.heat-*`, `.comparison-select`, `.kpis`, `.chart-row`, e todos os `@media` de layout
 
-- [ ] **Step 2: `style.css` vira o índice**
+- [ ] **Step 2: Trocar a lista de `<link>` no HTML**
 
-```css
-/* ==========================================================================
-   Gym Dashboard — folha de estilo
-   Ordem importa: tokens primeiro, depois base, componentes e seções.
-   ========================================================================== */
-@import url("tokens.css");
-@import url("base.css");
-@import url("components.css");
-@import url("sections.css");
+`css/style.css` deixa de existir. Em `index.html`, no `<head>`:
+
+```html
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/sections.css">
 ```
+
+A ordem importa (cascata), mas os quatro baixam em paralelo. Depois:
+`git rm css/style.css`.
 
 - [ ] **Step 3: Verificar que o visual não mudou**
 
