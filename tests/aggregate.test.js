@@ -259,8 +259,10 @@ describe('summarizeSession', () => {
 /* ─── Testes: dados reais ──────────────────────────────────────── */
 
 describe('WorkoutSession.json (dados reais)', () => {
-  it('140 sessões presentes', () => {
-    assert.equal(realSessions.length, 140);
+  it('141 sessões presentes incluindo Ombro de 5 de agosto', () => {
+    assert.equal(realSessions.length, 141);
+    const ombro = realSessions.find(s => s.name === 'Ombro' && s.startDate === 1785958040000);
+    assert.ok(ombro, 'sessão Ombro de 5 de agosto deve existir');
   });
 
   it('todas as sessões têm id e startDate', () => {
