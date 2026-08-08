@@ -26,6 +26,11 @@ window.Tabs = (function () {
       if (!btn) return;
       switchTo(btn.dataset.tab);
     });
+    document.addEventListener('click', (e) => {
+      const trigger = e.target.closest('[data-tab-target]');
+      if (!trigger) return;
+      switchTo(trigger.dataset.tabTarget);
+    });
     nav.addEventListener('keydown', (e) => {
       const btns = getTabButtons();
       const idx = btns.indexOf(document.activeElement);

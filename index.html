@@ -12,6 +12,7 @@
   <title>Evolução — Gym Dashboard</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='4' fill='%23ef3d57'/><path d='M4 5v6M12 5v6M4 8h8' stroke='%23fff' stroke-width='2' stroke-linecap='round'/></svg>">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/mobile-home.css">
 </head>
 <body>
   <a class="skip-link" href="#main">Pular para o conteúdo</a>
@@ -27,14 +28,6 @@
       <div class="hero-body">
         <div class="hero-controls">
           <div class="hero-period" id="rangePickerHost"></div>
-          <div id="summarySlot" class="summary-slot"></div>
-        </div>
-        <!-- A grade de dias é o artefato do caderno de treino: responde
-             "estou treinando?" antes de qualquer número. -->
-        <div class="streak" id="streakStrip" hidden>
-          <div class="streak-months" id="streakMonths" aria-hidden="true"></div>
-          <div class="streak-grid" id="streakGrid" role="img"></div>
-          <p class="streak-caption" id="streakCaption"></p>
         </div>
       </div>
     </header>
@@ -48,7 +41,15 @@
 
     <main id="main">
     <section class="tab-panel" data-tab="overview" id="tab-overview" role="tabpanel" aria-labelledby="tab-overview-btn">
+      <section class="mobile-home" id="mobileHome" aria-label="Resumo do treino"></section>
       <section class="kpis" id="kpis"></section>
+      <section class="recent-timeline" aria-labelledby="recentTimelineTitle">
+        <div class="section-heading">
+          <div><p class="eyebrow">MOVIMENTO RECENTE</p><h2 id="recentTimelineTitle">Últimos treinos</h2></div>
+          <button class="text-action" type="button" data-tab-target="history">Ver histórico</button>
+        </div>
+        <div id="recentTimeline" class="timeline-list"></div>
+      </section>
       <div class="chart-row">
         <div class="chart-box">
           <h2>Volume Mensal</h2>
@@ -141,11 +142,13 @@
   <script defer src="js/i18n.js"></script>
   <script defer src="js/state.js"></script>
   <script defer src="js/data.js"></script>
+  <script defer src="js/dashboard-insights.js"></script>
   <script defer src="js/ui.js"></script>
   <script defer src="js/toast.js"></script>
   <script defer src="js/charts.js"></script>
   <script defer src="js/tableview.js"></script>
   <script defer src="js/sections/overview.js"></script>
+  <script defer src="js/sections/mobile-home.js"></script>
   <script defer src="js/sections/strength.js"></script>
   <script defer src="js/sections/consistency.js"></script>
   <script defer src="js/render.js"></script>
