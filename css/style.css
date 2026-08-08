@@ -136,48 +136,8 @@ html { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
   background: linear-gradient(90deg, var(--accent), rgba(239, 61, 87, 0.1) 42%, transparent 75%);
 }
 .hero-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
   margin-bottom: 18px;
 }
-.hero-top h1 {
-  margin: 0;
-  color: var(--text);
-  font-size: clamp(1.7rem, 3vw, 2.45rem);
-  font-weight: 760;
-  line-height: 1.05;
-  letter-spacing: -0.052em;
-}
-.hero-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
-.hero-action {
-  display: inline-grid;
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  place-items: center;
-  padding: 0;
-  border: 1px solid var(--border-strong);
-  border-radius: 11px;
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--muted-strong);
-  cursor: pointer;
-  font-size: 1rem;
-  transition: transform var(--transition), border-color var(--transition), background var(--transition), color var(--transition);
-}
-.hero-action svg {
-  width: 19px;
-  height: 19px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.hero-action:hover { transform: translateY(-2px); border-color: var(--accent-border); background: var(--accent-soft); color: var(--text); }
-.hero-action:active { transform: translateY(0) scale(0.97); }
-.hero-action.is-ok { border-color: rgba(53, 201, 131, 0.4); background: var(--success-soft); color: var(--success); }
 
 .hero-meta {
   display: flex;

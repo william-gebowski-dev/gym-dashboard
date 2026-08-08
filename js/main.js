@@ -43,7 +43,6 @@ window.Main = (function () {
     App.tab = window.State.parseTabFromURL();
     window.State.loadState?.();
     renderHero();
-    wireExportButtons();
 
     if (location.protocol === 'file:') {
       showFileDropZone();
@@ -83,24 +82,6 @@ window.Main = (function () {
       showFileDropZone();
       window.Tabs.init();
     }
-  }
-
-  function wireExportButtons() {
-    const exportBtn = document.getElementById('exportBtn');
-    if (exportBtn) exportBtn.addEventListener('click', async () => {
-      try { await window.Export.toPNG(); } catch (e) { window.Toast?.show(e.message || 'Erro ao exportar', 'error'); }
-    });
-    const shareBtn = document.getElementById('shareBtn');
-    if (shareBtn) shareBtn.addEventListener('click', async () => {
-      const res = await window.Export.shareURL();
-      // O ícone é um SVG; trocar textContent o apagaria. Só sinalizamos o estado.
-      shareBtn.classList.toggle('is-ok', res.ok);
-      shareBtn.setAttribute('aria-label', res.ok ? 'Link copiado' : 'Não foi possível copiar o link');
-      setTimeout(() => {
-        shareBtn.classList.remove('is-ok');
-        shareBtn.setAttribute('aria-label', 'Copiar link');
-      }, 1500);
-    });
   }
 
   window.addEventListener('gym:rangechange', () => {
