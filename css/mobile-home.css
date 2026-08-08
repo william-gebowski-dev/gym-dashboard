@@ -1,0 +1,55 @@
+/* Mobile Home — snapshot, coaching cue and recent timeline */
+.mobile-home { margin-bottom: 14px; }
+.mobile-home-card,
+.recent-timeline {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.mobile-home-card { overflow: hidden; }
+.mobile-home-head { padding: 20px; background: linear-gradient(125deg, var(--accent-soft), transparent 58%); }
+.eyebrow {
+  margin: 0 0 7px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.mobile-home-title { margin: 0; color: var(--text); font-size: clamp(1.35rem, 5vw, 1.9rem); letter-spacing: -0.04em; }
+.mobile-home-meta { margin: 7px 0 0; color: var(--text-soft); font-size: 0.82rem; }
+.mobile-home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--border); }
+.mobile-home-tile { min-width: 0; padding: 17px; }
+.mobile-home-tile + .mobile-home-tile { border-left: 1px solid var(--border); }
+.tile-value { margin: 0; overflow: hidden; color: var(--text); font-size: clamp(1.3rem, 5.5vw, 1.85rem); font-weight: 720; letter-spacing: -0.04em; text-overflow: ellipsis; white-space: nowrap; }
+.tile-sub { min-height: 20px; margin: 7px 0 0; font-size: 0.67rem; }
+.mobile-home-card .delta { display: inline-block; padding: 3px 6px; border-radius: 6px; background: rgba(255,255,255,.04); color: var(--muted); font-weight: 650; }
+.mobile-home-card .delta.up { background: rgba(12,163,12,.13); color: var(--status-good); }
+.mobile-home-card .delta.down { background: rgba(236,131,90,.13); color: var(--status-serious); }
+.mobile-home-action { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-top: 1px solid var(--border); }
+.mobile-home-action .eyebrow { margin: 0; }
+.mobile-home-next { margin: 0; color: var(--text); font-weight: 700; }
+.recent-timeline { margin: 0 0 14px; padding: 18px; }
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 12px; }
+.section-heading h2 { margin: 0; font-size: 1rem; letter-spacing: -0.02em; }
+.text-action { padding: 0; border: 0; background: transparent; color: var(--text-soft); cursor: pointer; font: inherit; font-size: .76rem; font-weight: 700; }
+.text-action:hover { color: var(--accent-hover); }
+.timeline-list { display: grid; gap: 7px; }
+.timeline-item { display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 9px; width: 100%; padding: 12px 0; border: 0; border-top: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; text-align: left; }
+.timeline-date { color: var(--muted); font-size: .72rem; font-weight: 700; text-transform: uppercase; }
+.timeline-name { overflow: hidden; font-weight: 680; text-overflow: ellipsis; white-space: nowrap; }
+.timeline-stats { color: var(--muted); font-size: .72rem; white-space: nowrap; }
+@media (max-width: 540px) {
+  .mobile-home-head { padding: 17px; }
+  .mobile-home-tile { padding: 14px 13px; }
+  .mobile-home-action { padding: 14px 17px; }
+  .recent-timeline { padding: 15px 14px; }
+  .timeline-item { grid-template-columns: 43px minmax(0,1fr); }
+  .timeline-stats { grid-column: 2; font-size: .68rem; }
+}
+@media (max-width: 350px) {
+  .mobile-home-grid { grid-template-columns: 1fr; }
+  .mobile-home-tile + .mobile-home-tile { border-top: 1px solid var(--border); border-left: 0; }
+}

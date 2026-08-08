@@ -333,6 +333,7 @@ window.Render = (function () {
 
   function rerender() {
     const filtered = applyRange(App.sessions, App.range);
+    window.MobileHome?.render(filtered);
     renderKPIs(filtered);
     renderSessionsTable(filtered);
     renderAdherence(filtered);
