@@ -100,6 +100,14 @@ Para cada exercício, olhando a ÚLTIMA sessão em que ele apareceu:
       sugerir o mesmo peso, mirando +1 repetição na série mais fraca
 ```
 
+**Teto de segurança (decidido em 2026-08-06, após revisão):** se o menor
+incremento histórico passar de **10% da carga atual**, o app **não sugere
+aumento** — mostra a última carga e diz que não há incremento seguro
+registrado. Sem esse teto a regra sugeria 80 kg → 100 kg (+25%) em
+"Panturrilha no leg press", onde o menor incremento já aplicado foi 20 kg.
+Inventar um valor de anilha que o usuário talvez não tenha é pior que admitir
+que o histórico não oferece um passo seguro.
+
 **Restrições obrigatórias na apresentação:**
 
 - A sugestão sempre aparece **ao lado do que foi feito**, nunca sozinha. O usuário
@@ -118,6 +126,7 @@ Para cada exercício, olhando a ÚLTIMA sessão em que ele apareceu:
 | Grupo nunca treinado | "Nenhum registro" + convite a escolher outro grupo |
 | Exercício sem histórico | Última carga em branco, sem sugestão |
 | Lacuna > 180 dias | Última carga + "há N meses", sem sugestão |
+| Incremento histórico > 10% da carga | Última carga + "sem incremento seguro registrado" |
 | Sem sessões (arquivo vazio) | Estado vazio da app inteira, já existente |
 
 ## B. Refinamento visual
